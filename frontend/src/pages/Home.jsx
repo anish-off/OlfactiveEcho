@@ -1,20 +1,17 @@
 import React from 'react';
-import '../index.css';
 
 const Home = () => {
   return (
-    <main className="oe-hero" role="main" id="top">
-      <div className="oe-hero-bg-texture" aria-hidden="true" />
-      <div className="oe-hero-overlay" />
-      <div className="oe-hero-content">
-        <h1 className="oe-hero-title">
-          <span className="oe-hero-word">The Art</span> <span className="oe-hero-word">of Scent</span> <span className="oe-hero-word">Reimagined</span>
-        </h1>
-        <p className="oe-hero-sub">Explore crafted fragrances and curated samples that echo your story.</p>
-        <a href="#products" className="oe-cta-btn">Explore Our Products</a>
-        <div className="oe-scroll-indicator" aria-hidden="true">
-          <span className="oe-mouse"><span className="oe-wheel" /></span>
-          <span className="oe-scroll-text">Scroll</span>
+    <main id="top" className="relative overflow-hidden">
+      <div className="hero-bg" aria-hidden="true" />
+      <div className="hero-overlay" />
+      <div className="hero-container">
+        <h1 className="hero-title">The Art of Scent Reimagined</h1>
+        <p className="hero-sub">Explore crafted fragrances and curated samples that echo your story.</p>
+        <a href="#products" className="hero-cta">Explore Our Products</a>
+        <div className="scroll-indicator" aria-hidden="true">
+          <span className="scroll-mouse"><span className="scroll-wheel" /></span>
+          <span>Scroll</span>
         </div>
       </div>
     </main>
