@@ -7,6 +7,7 @@ import WhyChooseUs from "../components/product/WhyChooseUs";
 import Testimonials from "../components/product/Testimonials";
 import ShopByCategory from "../components/product/ShopByCategory";
 import CallToAction from "../components/product/CallToAction";
+import Footer from "../components/Footer";
 
 const Products = () => {
   return (
@@ -110,15 +111,7 @@ const Products = () => {
             </ScrollAnimationWrapper>
           </section>
 
-          <section className="py-16 bg-white shadow-lg rounded-lg mb-16">
-            <ScrollAnimationWrapper delay={0.2}>
-              <div className="w-full">
-                <h2 className="text-4xl font-bold text-gray-900 text-center mb-8">Ready to Explore?</h2>
-                <p className="text-lg text-gray-600 text-center mb-12 max-w-3xl mx-auto">Join our community and embark on a journey of discovery with our unique offerings.</p>
-                <CallToAction />
-              </div>
-            </ScrollAnimationWrapper>
-          </section>
+          <Footer />
       </div>
     </main>
   );
