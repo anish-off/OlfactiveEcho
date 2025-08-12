@@ -1,3 +1,4 @@
+import Footer from '@/components/Footer'
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -253,6 +254,7 @@ const Products = () => {
           Get Personalized Advice
         </button>
       </div>
+      <Footer />
     </div>
   )
 }
