@@ -18,8 +18,9 @@ export default {
       },
       backgroundImage: {
         'gold-ghost': 'linear-gradient(135deg, rgba(198, 154, 45, 0.1), rgba(184, 134, 11, 0.15), rgba(160, 104, 0, 0.1))',
+  'brand-text-gradient': 'linear-gradient(135deg, #c69a2d, #b8860b, #a06800)',
+  'gold-fade': 'linear-gradient(to right, transparent, rgba(184, 134, 11, 0.3), transparent)',
       },
-      
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
@@ -36,6 +37,7 @@ export default {
       boxShadow: {
         'custom-light': '0 5px 15px rgba(0, 0, 0, 0.08)',
         'custom-hover': '0 8px 25px rgba(0, 0, 0, 0.12)',
+        'glow-primary': '0 0 15px rgba(184, 134, 11, 0.3)',
       },
       keyframes: {
         'float-slow': { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-10px)' } },
@@ -50,17 +52,13 @@ export default {
       transitionTimingFunction: {
         'custom-ease': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
       },
-      height: {
-        'letter-tall': '1em',
-        'letter-short': '0.6em',
-      },
-      translate: {
-        'letter-down': '0.1em',
-        'letter-up': '0.05em',
-      },
       fontSize: {
-        'brand-lg': '10rem', // This is based on the value in Login.jsx: "top-[15%] text-[14rem]"
-        'brand-sm': '8rem', // This is based on the value in Login.jsx: "top-[55%] text-[12rem]"
+        'brand-lg': 'clamp(6rem, 15vw, 12rem)',
+        'brand-sm': 'clamp(4rem, 12vw, 10rem)',
+      },
+      spacing: {
+        'brand-top': 'clamp(10%, 15vh, 20%)',
+        'brand-bottom': 'clamp(45%, 55vh, 60%)',
       }
     }
   },
