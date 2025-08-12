@@ -92,27 +92,15 @@ const Products = () => {
           </ScrollAnimationWrapper>
         </section>
 
-        <section className="py-16 bg-gray-100 shadow-lg rounded-lg mb-16">
+        {/* <section className="py-16 bg-gray-100 shadow-lg rounded-lg mb-16">
           <ScrollAnimationWrapper delay={0.2}>
             <div className="w-full">
               <WhyChooseUs />
             </div>
           </ScrollAnimationWrapper>
-        </section>
+        </section> */}
 
-        {/* Combined Call to Action and Testimonials Section */}
-        <div className="flex flex-col lg:flex-row gap-8 mb-16">
-          <section className="w-full lg:w-1/2 py-12 bg-white shadow-lg rounded-lg">
-            <ScrollAnimationWrapper delay={0.2}>
-              <div className="w-full">
-                <h2 className="text-4xl font-bold text-gray-900 text-center mb-8">Ready to Explore?</h2>
-                <p className="text-lg text-gray-600 text-center mb-12 max-w-3xl mx-auto">Join our community and embark on a journey of discovery with our unique offerings.</p>
-                <CallToAction />
-              </div>
-            </ScrollAnimationWrapper>
-          </section>
-
-          <section className="w-full lg:w-1/2 py-12 bg-gray-100 shadow-lg rounded-lg">
+          <section className="py-16 bg-white shadow-lg rounded-lg mb-16">
             <ScrollAnimationWrapper delay={0.2}>
               <div className="w-full">
                 <h2 className="text-4xl font-bold text-gray-900 text-center mb-8">Loved by Our Community</h2>
@@ -121,7 +109,16 @@ const Products = () => {
               </div>
             </ScrollAnimationWrapper>
           </section>
-        </div>
+
+          <section className="py-16 bg-white shadow-lg rounded-lg mb-16">
+            <ScrollAnimationWrapper delay={0.2}>
+              <div className="w-full">
+                <h2 className="text-4xl font-bold text-gray-900 text-center mb-8">Ready to Explore?</h2>
+                <p className="text-lg text-gray-600 text-center mb-12 max-w-3xl mx-auto">Join our community and embark on a journey of discovery with our unique offerings.</p>
+                <CallToAction />
+              </div>
+            </ScrollAnimationWrapper>
+          </section>
       </div>
     </main>
   );
