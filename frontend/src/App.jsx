@@ -6,6 +6,7 @@ import Product from "./pages/Product";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ProductsAll from "./pages/ProductsAll";
+import NavbarWrapper from "./components/NavbarWrapper";
 
 function App() {
   return (
