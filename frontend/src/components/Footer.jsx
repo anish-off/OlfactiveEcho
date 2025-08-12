@@ -14,7 +14,6 @@ const Footer = () => (
         </p>
         <CallToAction />
       </div>
-    </ScrollAnimationWrapper>
 
     {/* Additional Footer Content */}
     <div className="mt-16 border-t border-gray-200 pt-10">
@@ -65,6 +64,7 @@ const Footer = () => (
         © {new Date().getFullYear()} Your Company Name. All rights reserved.
       </div>
     </div>
+    </ScrollAnimationWrapper>
   </footer>
 );
 
