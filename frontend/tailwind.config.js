@@ -21,7 +21,10 @@ export default {
         popover: { DEFAULT: 'hsl(var(--popover))', foreground: 'hsl(var(--popover-foreground))' },
         card: { DEFAULT: 'hsl(var(--card))', foreground: 'hsl(var(--card-foreground))' },
       },
-      borderRadius: { lg: 'var(--radius)', md: 'calc(var(--radius) - 2px)', sm: 'calc(var(--radius) - 4px)' },
+      boxShadow: {
+        'custom-light': '0 5px 15px rgba(0, 0, 0, 0.08)',
+        'custom-hover': '0 8px 25px rgba(0, 0, 0, 0.12)',
+      },
       keyframes: {
         'float-slow': { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-10px)' } },
         'fade-in-up': { from: { opacity: '0', transform: 'translateY(24px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
@@ -34,5 +37,8 @@ export default {
       }
     }
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [
+    require('tailwindcss-animate'),
+    require('@tailwindcss/line-clamp'),
+  ],
 };
