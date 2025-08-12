@@ -33,9 +33,9 @@ const Footer = () => (
         <div>
           <h3 className="text-xl font-semibold text-gray-800 mb-4">Contact</h3>
           <ul className="space-y-2 text-gray-600">
-            <li>Email: <a href="mailto:info@example.com" className="hover:text-gray-900">info@example.com</a></li>
-            <li>Phone: <a href="tel:+1234567890" className="hover:text-gray-900">+1 (234) 567-890</a></li>
-            <li>Address: 123 Innovation Way, Tech City</li>
+            <li>Email: <a href="mailto:OlfactiveEcho@gmail.com" className="hover:text-gray-900">OlfactiveEcho@gmail.com</a></li>
+            <li>Phone: <a href="tel:+919876543210" className="hover:text-gray-900">+91 98765 43210</a></li>
+            <li>Address: Pillars Nagar, Erode, Tamil Nadu</li>
           </ul>
         </div>
 
@@ -61,7 +61,7 @@ const Footer = () => (
 
       {/* Footer Bottom */}
       <div className="mt-12 text-center text-gray-500 text-sm">
-        © {new Date().getFullYear()} Your Company Name. All rights reserved.
+        © {new Date().getFullYear()} OlfactiveEcho. All rights reserved.
       </div>
     </div>
     </ScrollAnimationWrapper>
