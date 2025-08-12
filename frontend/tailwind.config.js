@@ -8,6 +8,18 @@ export default {
   theme: {
     container: { center: true, padding: '2rem', screens: { '2xl': '1320px' } },
     extend: {
+      height: {
+        'letter-tall': '1.2em',
+        'letter-short': '0.8em',
+      },
+      translate: {
+        'letter-up': '-0.1em',
+        'letter-down': '0.2em',
+      },
+      backgroundImage: {
+        'gold-ghost': 'linear-gradient(135deg, rgba(198, 154, 45, 0.1), rgba(184, 134, 11, 0.15), rgba(160, 104, 0, 0.1))',
+      },
+      
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
@@ -34,6 +46,21 @@ export default {
         'float-slow': 'float-slow 7s ease-in-out infinite',
         'fade-in-up': 'fade-in-up 1.1s cubic-bezier(.19,1,.22,1) both',
         wheel: 'wheel 2.4s ease-in-out infinite',
+      },
+      transitionTimingFunction: {
+        'custom-ease': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+      },
+      height: {
+        'letter-tall': '1em',
+        'letter-short': '0.6em',
+      },
+      translate: {
+        'letter-down': '0.1em',
+        'letter-up': '0.05em',
+      },
+      fontSize: {
+        'brand-lg': '10rem', // This is based on the value in Login.jsx: "top-[15%] text-[14rem]"
+        'brand-sm': '8rem', // This is based on the value in Login.jsx: "top-[55%] text-[12rem]"
       }
     }
   },

@@ -2,10 +2,37 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 const SignupForm = () => {
+  const brandName = "OLFACTIVE ECHO";
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
+    <div className="relative min-h-screen flex items-center justify-center bg-background overflow-hidden isolate">
+      {/* Background brand text with guaranteed alternating letters */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none -z-10 overflow-hidden">
+        {brandName.split(' ').map((word, index) => (
+          <div 
+            key={index}
+            className={`absolute left-1/2 -translate-x-1/2 font-bold text-foreground uppercase tracking-tight ${
+              index === 0 ? "top-[15%] text-brand-sm" : "top-[55%] text-brand-lg"
+            }`}
+          >
+            <div className="flex">
+              {[...word].map((letter, i) => (
+                <span 
+                  key={i}
+                  className={`
+                    inline-block transition-all duration-300
+                    ${i % 2 === 0 ? 'h-letter-tall translate-y-letter-down' : 'h-letter-short -translate-y-letter-up'}
+                  `}
+                >
+                  {letter}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
       <div className="bg-card p-8 rounded-lg shadow-lg w-full max-w-md">
-        <h2 className="text-2xl font-bold text-center text-foreground mb-6">Sign Up</h2>
+        <h2 className="text-2xl font-bold text-center mb-6 bg-clip-text text-transparent brand-text-gradient">Sign Up</h2>
         <form>
           <div className="mb-4">
             <label htmlFor="username" className="block text-sm font-medium text-muted-foreground mb-2">Username:</label>
@@ -36,7 +63,7 @@ const SignupForm = () => {
           </div>
           <button 
             type="submit" 
-            className="w-full bg-primary text-primary-foreground py-2 px-4 rounded-md hover:bg-primary/90 transition-colors duration-300"
+            className="w-full py-2 px-4 rounded-md transition-colors duration-300 bg-clip-text text-transparent brand-text-gradient border border-primary"
           >
             Sign Up
           </button>

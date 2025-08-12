@@ -80,3 +80,19 @@ body::before { content: ""; display:block; height:60px; }
   .hero-title { @apply text-4xl leading-[1.05]; }
   .scroll-indicator { @apply hidden; }
 }
+/* Add to your existing index.css */
+@layer utilities {
+  .alternating-letters span:nth-child(even) {
+    @apply h-[0.6em] -translate-y-[0.1em];
+  }
+  .alternating-letters span:nth-child(odd) {
+    @apply h-[1em] translate-y-[0.1em];
+  }
+  .brand-text-gradient {
+    background-image: linear-gradient(135deg, #c69a2d10, #b8860b15, #a0680010);
+  }
+  .bg-gold-ghost {
+    background-image: linear-gradient(135deg, rgba(198, 154, 45, 0.9), rgba(184, 134, 11, 0.9), rgba(160, 104, 0, 0.9));
+}
+}
+  
