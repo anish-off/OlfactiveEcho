@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="720" viewBox="0 0 720 720" role="img" aria-label="OlfactiveEcho logo mark monochrome">
+  <rect width="100%" height="100%" fill="#0B0F19"/>
+  <g fill="none" stroke="#FFFFFF" stroke-linecap="round">
+    <circle cx="360" cy="360" r="320" opacity="0.08" stroke-width="4"/>
+    <path d="M360 120 a240 240 0 1 1 0 480 a240 240 0 1 1 0 -480" stroke-width="10" opacity="0.18"/>
+    <path d="M360 170 a190 190 0 1 1 0 380 a190 190 0 1 1 0 -380" stroke-width="10" opacity="0.28"/>
+    <path d="M360 220 a140 140 0 1 1 0 280 a140 140 0 1 1 0 -280" stroke-width="10" opacity="0.45"/>
+  </g>
+  <g>
+    <rect x="250" y="275" rx="40" ry="40" width="220" height="250" fill="#FFFFFF"/>
+    <rect x="310" y="245" width="100" height="40" rx="12" fill="#FFFFFF"/>
+    <rect x="295" y="215" width="130" height="28" rx="8" fill="#E5E7EB"/>
+    <circle cx="362" cy="260" r="4" fill="#0B0F19" opacity="0.7"/>
+    <path d="M340 365 a40 40 0 1 0 0 80 h40 v-20 h-40 a20 20 0 1 1 0 -40 h40 v-20z" fill="#0B0F19"/>
+    <path d="M420 365 h-40 v80 h40 a40 40 0 0 0 0 -80zm-20 20 h20 a20 20 0 0 1 0 40 h-20z" fill="#0B0F19"/>
+  </g>
+</svg>
