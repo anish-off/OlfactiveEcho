@@ -5,6 +5,62 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Navbar Dropdown Animations */
+.dropdown-enter {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+.dropdown-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms, transform 200ms;
+}
+.dropdown-exit {
+  opacity: 1;
+}
+.dropdown-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 200ms, transform 200ms;
+}
+
+/* Badge Animation */
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.cart-badge, .wishlist-badge {
+  animation: pulse 1.5s infinite;
+}
+
+.profile-avatar-edit {
+  transition: all 0.3s ease;
+}
+
+.profile-avatar-edit:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.profile-stats-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.profile-stats-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.profile-tab-content {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 :root {
   /* White–Gold Light Theme */
   --background: 36 33% 97%;            /* near ivory */

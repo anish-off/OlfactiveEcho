@@ -1,16 +1,26 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import LoginForm from '../components/login/LoginForm';
 import { cn } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
+  const { isLoggedIn } = useAuth();
+  const navigate = useNavigate();
   const brandName = "OLFACTIVE ECHO";
-  
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      navigate('/products');
+    }
+  }, [isLoggedIn, navigate]);
+
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-background overflow-hidden isolate">
       {/* Background brand text */}
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none -z-10 overflow-hidden">
         {brandName.split(' ').map((word, index) => (
-          <div 
+          <div
             key={index}
             className={cn(
               "absolute left-1/2 -translate-x-1/2 font-bold text-white uppercase tracking-[0.35em]",
@@ -26,7 +36,7 @@ const Login = () => {
               {/* Text container */}
               <div className="flex relative">
                 {[...word].map((letter, i) => (
-                  <span 
+                  <span
                     key={i}
                     className={cn(
                       "inline-block transition-all duration-500 ease-custom-ease",

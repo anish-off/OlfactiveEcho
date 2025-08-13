@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Footer from '@/components/Footer';
+import LoginRedirectWrapper from '@/components/login/LoginRedirectWrapper';
+
 
 const Product = () => {
   const { id } = useParams();
@@ -53,7 +55,7 @@ const Product = () => {
 
   return (
     <>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16">
         {/* Breadcrumb */}
         <nav className="mb-8">
           <ol className="flex items-center space-x-2 text-sm">
@@ -184,18 +186,22 @@ const Product = () => {
 
             {/* Action Buttons */}
             <div className="space-y-4">
-              <button
-                onClick={handleBuyNow}
-                className="w-full bg-gradient-to-r from-[#D9A036] to-[#BF7C2A] text-white py-4 px-6 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-200"
-              >
-                Buy Now - ${(currentPrice * quantity).toFixed(2)}
-              </button>
-              <button
-                onClick={handleAddToCart}
-                className="w-full bg-white border-2 border-[#D9A036] text-[#BF7C2A] py-4 px-6 rounded-xl font-semibold hover:bg-yellow-50 transition-colors"
-              >
-                Add to Cart
-              </button>
+              <LoginRedirectWrapper>
+                <button
+                  onClick={handleBuyNow}
+                  className="w-full bg-gradient-to-r from-[#D9A036] to-[#BF7C2A] text-white py-4 px-6 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                >
+                  Buy Now - ${(currentPrice * quantity).toFixed(2)}
+                </button>
+              </LoginRedirectWrapper>
+              <LoginRedirectWrapper>
+                <button
+                  onClick={handleAddToCart}
+                  className="w-full bg-white border-2 border-[#D9A036] text-[#BF7C2A] py-4 px-6 rounded-xl font-semibold hover:bg-yellow-50 transition-colors"
+                >
+                  Add to Cart
+                </button>
+              </LoginRedirectWrapper>
             </div>
 
             {/* Features */}

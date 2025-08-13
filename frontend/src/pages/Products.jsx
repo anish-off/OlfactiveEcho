@@ -8,20 +8,24 @@ import Testimonials from "../components/product/Testimonials";
 import ShopByCategory from "../components/product/ShopByCategory";
 import CallToAction from "../components/product/CallToAction";
 import Footer from "../components/Footer";
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const Products = () => {
+  const { isLoggedIn } = useAuth();
+
   return (
-    <main className="relative overflow-hidden bg-gray-50">
+     <main className="relative overflow-hidden bg-gray-50 pt-16">
       {/* Hero Section */}
       <section className="relative text-center py-16 px-6 bg-gradient-to-br from-primary/5 via-white to-primary/5">
         <div className="absolute inset-0 overflow-hidden -z-10">
           <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1615228939092-4c8c6f4e1b0d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')] bg-cover bg-center opacity-20" />
           <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent opacity-70" /> {/* Subtle overlay */}
         </div>
-        
+
         <ScrollAnimationWrapper>
           <div className="max-w-4xl mx-auto">
-            <motion.h1 
+            <motion.h1
               className="text-5xl md:text-6xl font-extrabold tracking-tight text-gray-900 mb-6"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -31,7 +35,7 @@ const Products = () => {
                 Signature Fragrances
               </span>
             </motion.h1>
-            
+
             <motion.p
               className="text-2xl md:text-3xl font-semibold text-gray-800 mb-4 drop-shadow-sm"
               initial={{ opacity: 0, y: 20 }}
@@ -40,8 +44,8 @@ const Products = () => {
             >
               Crafted for the Discerning Individual
             </motion.p>
-            
-            <motion.p 
+
+            <motion.p
               className="text-xl text-gray-700 max-w-3xl mx-auto mb-8 drop-shadow-sm"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -49,18 +53,18 @@ const Products = () => {
             >
               Immerse yourself in an unparalleled sensory experience. Our exquisite collection of handcrafted perfumes is meticulously designed to evoke emotions, inspire memories, and tell a unique olfactory story that resonates with your individuality. Each bottle is a testament to artistry and passion.
             </motion.p>
-            
+
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.6 }}
             >
-              <a 
-                href="/products/all" 
+              <Link
+                to={isLoggedIn ? "/products/all" : "/login"}
                 className="inline-flex items-center justify-center px-8 py-4 bg-primary hover:bg-primary/90 text-white rounded-full text-lg font-medium shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
               >
                 Explore Collection
-              </a>
+              </Link>
             </motion.div>
           </div>
         </ScrollAnimationWrapper>

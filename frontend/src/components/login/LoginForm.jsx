@@ -1,7 +1,25 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const LoginForm = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const from = location.state?.from || '/';
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (email && password) {
+      login({ username: email });
+      navigate(from, { replace: true });
+    } else {
+      alert('Please enter both email and password.');
+    }
+  };
   return (
     <div className="space-y-6">
       <div className="text-center">
@@ -9,7 +27,7 @@ const LoginForm = () => {
         <p className="text-muted-foreground mt-2">Sign in to your account</p>
       </div>
       
-      <form className="space-y-4">
+      <form className="space-y-4" onSubmit={handleSubmit}>
         <div className="space-y-2">
           <label htmlFor="email" className="block text-sm font-medium text-muted-foreground">Email</label>
           <input 
@@ -19,6 +37,8 @@ const LoginForm = () => {
             className="w-full px-4 py-3 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 bg-background text-foreground transition-all"
             placeholder="your@email.com"
             required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </div>
         
@@ -34,6 +54,8 @@ const LoginForm = () => {
             className="w-full px-4 py-3 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 bg-background text-foreground transition-all"
             placeholder="••••••••"
             required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
         </div>
         

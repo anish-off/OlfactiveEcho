@@ -1,70 +1,515 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
-
-const navLinks = [
-  { to: '/products', label: 'Products' },
-  { to: '/samples', label: 'Samples' },
-];
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { 
+  ShoppingBag, 
+  Heart, 
+  User, 
+  ChevronDown, 
+  LogOut, 
+  Settings, 
+  Package, 
+  Search, 
+  Menu, 
+  X,
+  Home,
+  Store,
+  Users,
+  Info
+} from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import LoginRedirectWrapper from './login/LoginRedirectWrapper';
 
 const Navbar = () => {
-  const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isLoggedIn, user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 4);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    const handleScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  useEffect(() => { document.body.style.overflow = open ? 'hidden' : ''; }, [open]);
+  const toggleDropdown = (dropdown) => {
+    setOpenDropdown(openDropdown === dropdown ? null : dropdown);
+  };
 
-  const close = () => setOpen(false);
+  const closeAllDropdowns = () => {
+    setOpenDropdown(null);
+    setMobileMenuOpen(false);
+  };
 
-  const shell = scrolled
-    ? 'backdrop-blur-xl bg-white/80 shadow-[0_4px_22px_-6px_rgba(0,0,0,0.15)] border-b border-neutral-200/70'
-    : 'bg-gradient-to-tr from-white/90 via-white/70 to-white/90 backdrop-blur-xl border-b border-neutral-200/60';
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.dropdown-container')) {
+        closeAllDropdowns();
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    closeAllDropdowns();
+  }, [location.pathname]);
+
+  const isActiveRoute = (path) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
+
+  const handleAuthRequired = (e, action = 'access this feature') => {
+    if (!isLoggedIn) {
+      e.preventDefault();
+      const shouldLogin = window.confirm(`Please login to ${action}. Would you like to go to the login page?`);
+      if (shouldLogin) {
+        navigate('/login');
+      }
+    }
+  };
 
   return (
-    <header className={`fixed top-0 inset-x-0 z-50 transition-colors duration-500 ${shell}`}> 
-      <div className="container flex items-center justify-between py-4">
-        <Link to="/" className="relative text-sm font-bold uppercase tracking-[0.65em] bg-gradient-to-r from-amber-700 via-amber-500 to-amber-300 bg-clip-text text-transparent" onClick={close}>
-          OlfactiveEcho
-          <span className="absolute left-0 -bottom-1 h-px w-0 bg-gradient-to-r from-amber-600 to-amber-300 transition-all duration-500 group-hover:w-full" aria-hidden="true" />
-        </Link>
-        <nav className="hidden md:flex items-center gap-8" aria-label="Main navigation">
-          {navLinks.map(l => (
-            <Link key={l.to} to={l.to} onClick={close} className="relative text-[13px] font-semibold uppercase text-neutral-700 hover:text-neutral-900 transition-colors py-1">
-              {l.label}
-              <span className="absolute left-0 -bottom-0.5 h-px w-0 bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500 group-hover:w-full" />
+    <>
+      <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+        scrolled ? 'bg-white/95 backdrop-blur-md shadow-lg' : 'bg-white/90 backdrop-blur-sm'
+      }`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <Link to="/" className="flex items-center" onClick={closeAllDropdowns}>
+              <span className="text-xl font-bold bg-gradient-to-r from-amber-600 to-amber-400 bg-clip-text text-transparent">
+                OLFACTIVE ECHO
+              </span>
             </Link>
-          ))}
-          <Link to="/login" onClick={close} className="relative inline-flex items-center justify-center rounded-full border-2 border-amber-300/60 bg-gradient-to-br from-amber-400/90 via-amber-500/90 to-amber-600/90 px-6 py-2 text-[11px] font-bold uppercase text-white shadow-[0_8px_26px_-8px_rgba(0,0,0,0.35)] hover:shadow-[0_10px_34px_-6px_rgba(0,0,0,0.4)] transition-all duration-700 overflow-hidden group">
-            <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.6),rgba(255,255,255,0)_65%)] mix-blend-overlay" />
-            Login
-          </Link>
-        </nav>
-        <button aria-label={open ? 'Close menu' : 'Open menu'} onClick={() => setOpen(o => !o)} className="md:hidden inline-flex items-center justify-center w-11 h-11 rounded-xl border border-neutral-300/70 bg-white/60 backdrop-blur hover:bg-white/80 transition-all">
-          {open ? <X className="w-5 h-5 text-amber-600" /> : <Menu className="w-5 h-5 text-amber-600" />}
-        </button>
-      </div>
-      {/* Mobile Panel */}
-      <div className={`md:hidden fixed inset-y-0 right-0 w-2/3 max-w-xs bg-white/95 backdrop-blur-xl border-l border-neutral-200 transition-transform duration-700 ${open ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="flex flex-col pt-28 pb-10 px-8 gap-8">
-          {navLinks.map(l => (
-            <Link key={l.to} to={l.to} onClick={close} className="text-[14px] font-semibold uppercase text-neutral-700 hover:text-neutral-900 transition-colors relative group">
-              {l.label}
-              <span className="absolute left-0 -bottom-1 h-px bg-gradient-to-r from-amber-600 to-amber-400 w-0 group-hover:w-2/3 transition-all duration-500" />
-            </Link>
-          ))}
-          <Link to="/login" onClick={close} className="relative inline-flex items-center justify-center rounded-full border-2 border-amber-300/70 bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 px-7 py-3 text-[12px] font-bold uppercase text-white shadow-[0_8px_26px_-8px_rgba(0,0,0,0.4)] hover:shadow-[0_12px_36px_-8px_rgba(0,0,0,0.45)] transition-all duration-700 overflow-hidden group">
-            <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.6),rgba(255,255,255,0)_65%)] mix-blend-overlay" />
-            Login
-          </Link>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden lg:flex items-center space-x-1">
+              <Link 
+                to="/" 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  isActiveRoute('/') 
+                    ? 'bg-amber-100 text-amber-700' 
+                    : 'text-gray-700 hover:text-amber-600 hover:bg-amber-50'
+                }`}
+                onClick={closeAllDropdowns}
+              >
+                <Home className="w-4 h-4 inline mr-2" />
+                Home
+              </Link>
+              <Link 
+                to="/products" 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  isActiveRoute('/products') 
+                    ? 'bg-amber-100 text-amber-700' 
+                    : 'text-gray-700 hover:text-amber-600 hover:bg-amber-50'
+                }`}
+                onClick={(e) => {
+                  closeAllDropdowns();
+                  handleAuthRequired(e, 'browse products');
+                }}
+              >
+                <Store className="w-4 h-4 inline mr-2" />
+                Shop
+              </Link>
+              <Link 
+                to="/collections" 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  isActiveRoute('/collections') 
+                    ? 'bg-amber-100 text-amber-700' 
+                    : 'text-gray-700 hover:text-amber-600 hover:bg-amber-50'
+                }`}
+                onClick={(e) => {
+                  closeAllDropdowns();
+                  handleAuthRequired(e, 'view collections');
+                }}
+              >
+                <Package className="w-4 h-4 inline mr-2" />
+                Collections
+              </Link>
+              <Link 
+                to="/about" 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  isActiveRoute('/about') 
+                    ? 'bg-amber-100 text-amber-700' 
+                    : 'text-gray-700 hover:text-amber-600 hover:bg-amber-50'
+                }`}
+                onClick={closeAllDropdowns}
+              >
+                <Info className="w-4 h-4 inline mr-2" />
+                About
+              </Link>
+            </nav>
+
+            {/* Right Side Actions */}
+            <div className="flex items-center space-x-2">
+              {/* Search, Cart, and Wishlist - Only show when logged in */}
+              {isLoggedIn && (
+                <>
+                  {/* Search */}
+                  <button 
+                    className="p-2 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all duration-200"
+                    onClick={(e) => handleAuthRequired(e, 'use search')}
+                  >
+                    <Search className="h-5 w-5" />
+                  </button>
+
+                  {/* Cart */}
+                  <div className="relative dropdown-container">
+                    <button 
+                      onClick={() => toggleDropdown('cart')}
+                      className="p-2 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all duration-200"
+                    >
+                      <ShoppingBag className="h-5 w-5" />
+                    </button>
+
+                    {openDropdown === 'cart' && (
+                      <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                        <div className="p-4 bg-gradient-to-r from-amber-50 to-amber-100 border-b border-gray-100">
+                          <h3 className="text-sm font-semibold text-gray-900">Shopping Cart (3 items)</h3>
+                        </div>
+                        <div className="max-h-96 overflow-y-auto">
+                          {[1, 2, 3].map((item) => (
+                            <div key={item} className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-12 h-12 bg-gradient-to-br from-amber-100 to-amber-200 rounded-lg flex items-center justify-center">
+                                  <span className="text-amber-600 font-bold text-sm">P{item}</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 truncate">Chanel No. {item}</p>
+                                  <p className="text-xs text-gray-500">50ml • Eau de Parfum</p>
+                                  <p className="text-sm font-semibold text-amber-600">${120 + (item * 20)}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="p-4 bg-gray-50 border-t border-gray-100">
+                          <div className="flex justify-between items-center mb-3">
+                            <span className="text-sm font-medium text-gray-700">Subtotal</span>
+                            <span className="text-lg font-bold text-gray-900">$380.00</span>
+                          </div>
+                          <LoginRedirectWrapper>
+                            <Link
+                              to="/cart"
+                              onClick={closeAllDropdowns}
+                              className="w-full flex items-center justify-center px-4 py-2.5 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors"
+                            >
+                              View Cart & Checkout
+                            </Link>
+                          </LoginRedirectWrapper>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Wishlist */}
+                  <div className="relative dropdown-container">
+                    <button 
+                      onClick={() => toggleDropdown('wishlist')}
+                      className="p-2 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all duration-200"
+                    >
+                      <Heart className="h-5 w-5" />
+                    </button>
+
+                    {openDropdown === 'wishlist' && (
+                      <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                        <div className="p-4 bg-gradient-to-r from-amber-50 to-amber-100 border-b border-gray-100">
+                          <h3 className="text-sm font-semibold text-gray-900">Your Wishlist (2 items)</h3>
+                        </div>
+                        <div className="max-h-96 overflow-y-auto">
+                          {[1, 2].map((item) => (
+                            <div key={item} className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-12 h-12 bg-gradient-to-br from-amber-100 to-amber-200 rounded-lg flex items-center justify-center">
+                                  <span className="text-amber-600 font-bold text-sm">W{item}</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 truncate">
+                                    Tom Ford - {item === 1 ? 'Black Orchid' : 'Oud Wood'}
+                                  </p>
+                                  <p className="text-xs text-gray-500">100ml • Eau de Parfum</p>
+                                  <p className="text-sm font-semibold text-amber-600">${150 + (item * 50)}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="p-4 bg-gray-50 border-t border-gray-100">
+                          <LoginRedirectWrapper>
+                            <Link
+                              to="/wishlist"
+                              onClick={closeAllDropdowns}
+                              className="w-full flex items-center justify-center px-4 py-2.5 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors"
+                            >
+                              View Wishlist
+                            </Link>
+                          </LoginRedirectWrapper>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Profile/Auth */}
+              {isLoggedIn ? (
+                <div className="relative dropdown-container">
+                  <button
+                    onClick={() => toggleDropdown('profile')}
+                    className="flex items-center space-x-2 p-2 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all duration-200"
+                  >
+                    <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-amber-600 rounded-full flex items-center justify-center">
+                      <User className="h-4 w-4 text-white" />
+                    </div>
+                    <span className="hidden xl:inline text-sm font-medium text-gray-700">{user?.name || 'Account'}</span>
+                    <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${openDropdown === 'profile' ? 'transform rotate-180' : ''}`} />
+                  </button>
+
+                  {openDropdown === 'profile' && (
+                    <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                      {/* Profile Header */}
+                      <div className="p-4 bg-gradient-to-r from-amber-50 to-amber-100 border-b border-gray-100">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-full flex items-center justify-center">
+                            <User className="h-6 w-6 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">{user?.name || 'User'}</p>
+                            <p className="text-xs text-gray-600">{user?.email || 'user@example.com'}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Menu Items */}
+                      <div className="py-2">
+                        <Link
+                          to="/profile"
+                          onClick={closeAllDropdowns}
+                          className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700 transition-colors"
+                        >
+                          <User className="h-4 w-4 mr-3 text-gray-500" />
+                          My Profile
+                        </Link>
+                        <Link
+                          to="/dashboard"
+                          onClick={closeAllDropdowns}
+                          className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700 transition-colors"
+                        >
+                          <Package className="h-4 w-4 mr-3 text-gray-500" />
+                          Dashboard
+                        </Link>
+                        <Link
+                          to="/orders"
+                          onClick={closeAllDropdowns}
+                          className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700 transition-colors"
+                        >
+                          <Package className="h-4 w-4 mr-3 text-gray-500" />
+                          My Orders
+                        </Link>
+                        <Link
+                          to="/wishlist"
+                          onClick={closeAllDropdowns}
+                          className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700 transition-colors"
+                        >
+                          <Heart className="h-4 w-4 mr-3 text-gray-500" />
+                          My Wishlist
+                        </Link>
+                        <Link
+                          to="/settings"
+                          onClick={closeAllDropdowns}
+                          className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700 transition-colors"
+                        >
+                          <Settings className="h-4 w-4 mr-3 text-gray-500" />
+                          Account Settings
+                        </Link>
+                        
+                        {/* Divider */}
+                        <div className="border-t border-gray-100 my-2"></div>
+                        
+                        {/* Logout Button */}
+                        <button
+                          onClick={() => {
+                            logout();
+                            closeAllDropdowns();
+                            navigate('/');
+                          }}
+                          className="w-full flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
+                        >
+                          <LogOut className="h-4 w-4 mr-3" />
+                          Sign Out
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <LoginRedirectWrapper>
+                  <Link
+                    to="/login"
+                    onClick={closeAllDropdowns}
+                    className="hidden sm:flex items-center px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors"
+                  >
+                    Sign In
+                  </Link>
+                </LoginRedirectWrapper>
+              )}
+
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="lg:hidden p-2 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all duration-200"
+              >
+                {mobileMenuOpen ? (
+                  <X className="h-6 w-6" />
+                ) : (
+                  <Menu className="h-6 w-6" />
+                )}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-      {open && <div className="md:hidden fixed inset-0 bg-neutral-900/25 backdrop-blur-sm animate-in fade-in duration-700" onClick={close} />}
-    </header>
+
+        {/* Mobile Navigation Menu */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden bg-white border-t border-gray-100 shadow-lg">
+            <div className="px-4 py-6 space-y-4">
+              {/* Mobile Navigation Links */}
+              <nav className="space-y-2">
+                <Link
+                  to="/"
+                  className={`flex items-center px-4 py-3 rounded-lg text-base font-medium transition-all duration-200 ${
+                    isActiveRoute('/') 
+                      ? 'bg-amber-100 text-amber-700' 
+                      : 'text-gray-700 hover:text-amber-600 hover:bg-amber-50'
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Home className="w-5 h-5 mr-3" />
+                  Home
+                </Link>
+                <Link
+                  to="/products"
+                  className={`flex items-center px-4 py-3 rounded-lg text-base font-medium transition-all duration-200 ${
+                    isActiveRoute('/products') 
+                      ? 'bg-amber-100 text-amber-700' 
+                      : 'text-gray-700 hover:text-amber-600 hover:bg-amber-50'
+                  }`}
+                  onClick={(e) => {
+                    setMobileMenuOpen(false);
+                    handleAuthRequired(e, 'browse products');
+                  }}
+                >
+                  <Store className="w-5 h-5 mr-3" />
+                  Shop
+                </Link>
+                <Link
+                  to="/collections"
+                  className={`flex items-center px-4 py-3 rounded-lg text-base font-medium transition-all duration-200 ${
+                    isActiveRoute('/collections') 
+                      ? 'bg-amber-100 text-amber-700' 
+                      : 'text-gray-700 hover:text-amber-600 hover:bg-amber-50'
+                  }`}
+                  onClick={(e) => {
+                    setMobileMenuOpen(false);
+                    handleAuthRequired(e, 'view collections');
+                  }}
+                >
+                  <Package className="w-5 h-5 mr-3" />
+                  Collections
+                </Link>
+                <Link
+                  to="/about"
+                  className={`flex items-center px-4 py-3 rounded-lg text-base font-medium transition-all duration-200 ${
+                    isActiveRoute('/about') 
+                      ? 'bg-amber-100 text-amber-700' 
+                      : 'text-gray-700 hover:text-amber-600 hover:bg-amber-50'
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Info className="w-5 h-5 mr-3" />
+                  About
+                </Link>
+              </nav>
+              
+              {/* Mobile User Actions */}
+              {isLoggedIn ? (
+                <div className="pt-4 border-t border-gray-100 space-y-2">
+                  <Link
+                    to="/profile"
+                    className="flex items-center px-4 py-3 text-base font-medium text-gray-700 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <User className="w-5 h-5 mr-3" />
+                    My Profile
+                  </Link>
+                  <Link
+                    to="/dashboard"
+                    className="flex items-center px-4 py-3 text-base font-medium text-gray-700 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Package className="w-5 h-5 mr-3" />
+                    Dashboard
+                  </Link>
+                  <Link
+                    to="/orders"
+                    className="flex items-center px-4 py-3 text-base font-medium text-gray-700 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Package className="w-5 h-5 mr-3" />
+                    My Orders
+                  </Link>
+                  <Link
+                    to="/wishlist"
+                    className="flex items-center px-4 py-3 text-base font-medium text-gray-700 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Heart className="w-5 h-5 mr-3" />
+                    My Wishlist
+                  </Link>
+                  <Link
+                    to="/settings"
+                    className="flex items-center px-4 py-3 text-base font-medium text-gray-700 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Settings className="w-5 h-5 mr-3" />
+                    Account Settings
+                  </Link>
+                  <button
+                    onClick={() => {
+                      logout();
+                      setMobileMenuOpen(false);
+                      navigate('/');
+                    }}
+                    className="w-full flex items-center px-4 py-3 text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <LogOut className="w-5 h-5 mr-3" />
+                    Sign Out
+                  </button>
+                </div>
+              ) : (
+                <div className="pt-4 border-t border-gray-100">
+                  <Link
+                    to="/login"
+                    className="block w-full text-center px-4 py-3 bg-amber-600 text-white text-base font-medium rounded-lg hover:bg-amber-700 transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Sign In
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </header>
+      
+      {/* Spacer for fixed navbar */}
+      <div className="h-16"></div>
+    </>
   );
 };
 
