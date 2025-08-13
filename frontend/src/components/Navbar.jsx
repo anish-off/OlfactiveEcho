@@ -17,6 +17,7 @@ import {
   Info
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '@/context/CartContext';
 import LoginRedirectWrapper from './login/LoginRedirectWrapper';
 
 const Navbar = () => {
@@ -24,6 +25,7 @@ const Navbar = () => {
   const [openDropdown, setOpenDropdown] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isLoggedIn, user, logout } = useAuth();
+  const { items: cartItems, subtotal } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -170,19 +172,20 @@ const Navbar = () => {
                     {openDropdown === 'cart' && (
                       <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
                         <div className="p-4 bg-gradient-to-r from-amber-50 to-amber-100 border-b border-gray-100">
-                          <h3 className="text-sm font-semibold text-gray-900">Shopping Cart (3 items)</h3>
+                          <h3 className="text-sm font-semibold text-gray-900">Shopping Cart ({cartItems.length} {cartItems.length===1?'item':'items'})</h3>
                         </div>
                         <div className="max-h-96 overflow-y-auto">
-                          {[1, 2, 3].map((item) => (
-                            <div key={item} className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                          {cartItems.length === 0 && (
+                            <div className="p-4 text-center text-gray-500">Your cart is empty.</div>
+                          )}
+                          {cartItems.map((ci) => (
+                            <div key={ci.id} className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
                               <div className="flex items-center space-x-3">
-                                <div className="w-12 h-12 bg-gradient-to-br from-amber-100 to-amber-200 rounded-lg flex items-center justify-center">
-                                  <span className="text-amber-600 font-bold text-sm">P{item}</span>
-                                </div>
+                                <img src={ci.product.imageUrl || 'https://via.placeholder.com/48x48?text=F'} alt={ci.product.name} className="w-12 h-12 rounded object-cover" />
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-gray-900 truncate">Chanel No. {item}</p>
-                                  <p className="text-xs text-gray-500">50ml • Eau de Parfum</p>
-                                  <p className="text-sm font-semibold text-amber-600">${120 + (item * 20)}</p>
+                                  <p className="text-sm font-medium text-gray-900 truncate">{ci.product.name}</p>
+                                  <p className="text-xs text-gray-500">Qty: {ci.quantity}</p>
+                                  <p className="text-sm font-semibold text-amber-600">₹{ci.product.price}</p>
                                 </div>
                               </div>
                             </div>
@@ -191,7 +194,7 @@ const Navbar = () => {
                         <div className="p-4 bg-gray-50 border-t border-gray-100">
                           <div className="flex justify-between items-center mb-3">
                             <span className="text-sm font-medium text-gray-700">Subtotal</span>
-                            <span className="text-lg font-bold text-gray-900">$380.00</span>
+                            <span className="text-lg font-bold text-gray-900">₹{subtotal}</span>
                           </div>
                           <LoginRedirectWrapper>
                             <Link
@@ -219,26 +222,9 @@ const Navbar = () => {
                     {openDropdown === 'wishlist' && (
                       <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
                         <div className="p-4 bg-gradient-to-r from-amber-50 to-amber-100 border-b border-gray-100">
-                          <h3 className="text-sm font-semibold text-gray-900">Your Wishlist (2 items)</h3>
+                          <h3 className="text-sm font-semibold text-gray-900">Your Wishlist</h3>
                         </div>
-                        <div className="max-h-96 overflow-y-auto">
-                          {[1, 2].map((item) => (
-                            <div key={item} className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                              <div className="flex items-center space-x-3">
-                                <div className="w-12 h-12 bg-gradient-to-br from-amber-100 to-amber-200 rounded-lg flex items-center justify-center">
-                                  <span className="text-amber-600 font-bold text-sm">W{item}</span>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-gray-900 truncate">
-                                    Tom Ford - {item === 1 ? 'Black Orchid' : 'Oud Wood'}
-                                  </p>
-                                  <p className="text-xs text-gray-500">100ml • Eau de Parfum</p>
-                                  <p className="text-sm font-semibold text-amber-600">${150 + (item * 50)}</p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                        <div className="max-h-96 overflow-y-auto p-4 text-sm text-gray-600">Open wishlist page to view items.</div>
                         <div className="p-4 bg-gray-50 border-t border-gray-100">
                           <LoginRedirectWrapper>
                             <Link

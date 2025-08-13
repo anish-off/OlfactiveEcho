@@ -1,50 +1,39 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Footer from '@/components/Footer';
+import { listPerfumes } from '@/api/perfume';
 
 const ProductsAll = () => {
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [favorites, setFavorites] = useState(new Set());
+  const [perfumes, setPerfumes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const perfumes = [
-    { id: 1, name: 'Chanel No. 5', brand: 'Chanel', price: 120, category: 'floral', image: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?w=400&h=400&fit=crop&auto=format', description: "The world's most iconic fragrance. A timeless bouquet of ylang-ylang and rose, heightened by woody base notes.", rating: 4.8, reviews: 2450 },
-    { id: 2, name: 'Dior Sauvage', brand: 'Christian Dior', price: 95, category: 'fresh', image: 'https://images.unsplash.com/photo-1615634260167-c8cdede054de?w=400&h=400&fit=crop&auto=format', description: 'A fresh and woody composition that captures the essence of wide open spaces.', rating: 4.7, reviews: 1890 },
-    { id: 3, name: 'Tom Ford Black Orchid', brand: 'Tom Ford', price: 150, category: 'oriental', image: 'https://images.unsplash.com/photo-1541643600914-78b084683601?w=400&h=400&fit=crop&auto=format', description: 'A luxurious and sensual fragrance with notes of black orchid, spice, and dark chocolate.', rating: 4.6, reviews: 1234 },
-    { id: 4, name: 'Giorgio Armani Acqua di Gio', brand: 'Giorgio Armani', price: 85, category: 'fresh', image: 'https://images.unsplash.com/photo-1588405748880-12d1d2a59db9?w=400&h=400&fit=crop&auto=format', description: 'A fresh aquatic fragrance inspired by the Mediterranean sea breeze.', rating: 4.5, reviews: 3210 },
-    { id: 5, name: 'Yves Saint Laurent Black Opium', brand: 'Yves Saint Laurent', price: 110, category: 'oriental', image: 'https://images.unsplash.com/photo-1563170351-be82bc888aa4?w=400&h=400&fit=crop&auto=format', description: 'A mysterious and alluring fragrance with coffee, vanilla, and white flowers.', rating: 4.7, reviews: 1567 },
-    { id: 6, name: 'Creed Aventus', brand: 'Creed', price: 320, category: 'woody', image: 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=400&h=400&fit=crop&auto=format', description: 'A sophisticated blend of pineapple, birch, and musk for the modern gentleman.', rating: 4.9, reviews: 987 },
-    { id: 7, name: 'Marc Jacobs Daisy', brand: 'Marc Jacobs', price: 75, category: 'floral', image: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400&h=400&fit=crop&auto=format', description: 'A youthful and feminine fragrance with notes of wild berries and jasmine.', rating: 4.4, reviews: 2103 },
-    { id: 8, name: 'Dolce & Gabbana Light Blue', brand: 'Dolce & Gabbana', price: 90, category: 'fresh', image: 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=400&h=400&fit=crop&auto=format&q=80', description: 'Captures the essence of the Mediterranean with citrus and bamboo notes.', rating: 4.3, reviews: 1876 },
-    { id: 9, name: 'Viktor & Rolf Flowerbomb', brand: 'Viktor & Rolf', price: 125, category: 'floral', image: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?w=400&h=400&fit=crop&auto=format&q=80', description: 'An explosion of flowers with jasmine, rose, and patchouli.', rating: 4.6, reviews: 1432 },
-    { id: 10, name: "Hermès Terre d'Hermès", brand: 'Hermès', price: 105, category: 'woody', image: 'https://images.unsplash.com/photo-1615634260167-c8cdede054de?w=400&h=400&fit=crop&auto=format&q=80', description: 'A woody and mineral fragrance connecting man to earth and the elements.', rating: 4.5, reviews: 1098 },
-    { id: 11, name: "Lancôme La Vie Est Belle", brand: 'Lancôme', price: 100, category: 'floral', image: 'https://images.unsplash.com/photo-1563170351-be82bc888aa4?w=400&h=400&fit=crop&auto=format&q=80', description: "A sweet and gourmand fragrance celebrating life's simple pleasures.", rating: 4.4, reviews: 1765 },
-    { id: 12, name: 'Versace Bright Crystal', brand: 'Versace', price: 70, category: 'floral', image: 'https://images.unsplash.com/photo-1588405748880-12d1d2a59db9?w=400&h=400&fit=crop&auto=format&q=80', description: 'A luminous and fresh floral fragrance with pomegranate and peony.', rating: 4.2, reviews: 1543 },
-    { id: 13, name: 'Bleu de Chanel', brand: 'Chanel', price: 130, category: 'woody', image: 'https://images.unsplash.com/photo-1549049950-48d5887197a0?w=400&h=400&fit=crop&auto=format', description: 'A timeless yet unpredictable scent in a round bottle as simple as it is elegant.', rating: 4.6, reviews: 2187 },
-    { id: 14, name: 'Gucci Bloom', brand: 'Gucci', price: 98, category: 'floral', image: 'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=400&h=400&fit=crop&auto=format', description: 'A rich white floral fragrance designed to celebrate the authenticity of women.', rating: 4.5, reviews: 1654 },
-    { id: 15, name: 'Burberry Her', brand: 'Burberry', price: 88, category: 'fresh', image: 'https://images.unsplash.com/photo-1582930036748-82d18d25b4d3?w=400&h=400&fit=crop&auto=format', description: 'A gourmand with a twist, this fragrance brings together berries and florals.', rating: 4.3, reviews: 1432 },
-    { id: 16, name: 'Prada Black', brand: 'Prada', price: 115, category: 'oriental', image: 'https://images.unsplash.com/photo-1587017539504-67cfbddac569?w=400&h=400&fit=crop&auto=format', description: 'A contemporary oriental fragrance with angelica and black pepper.', rating: 4.4, reviews: 987 },
-    { id: 17, name: 'Calvin Klein Eternity', brand: 'Calvin Klein', price: 65, category: 'floral', image: 'https://images.unsplash.com/photo-1595425970377-c9703cf48b6d?w=400&h=400&fit=crop&auto=format', description: 'A classic floral fragrance that embodies the eternal love between a man and woman.', rating: 4.1, reviews: 2876 },
-    { id: 18, name: 'Maison Margiela Replica Beach Walk', brand: 'Maison Margiela', price: 142, category: 'fresh', image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400&h=400&fit=crop&auto=format', description: 'Captures the essence of a summer stroll on a warm sandy beach.', rating: 4.7, reviews: 1234 },
-    { id: 19, name: 'Jo Malone Peony & Blush Suede', brand: 'Jo Malone', price: 135, category: 'floral', image: 'https://images.unsplash.com/photo-1607748862156-7c548e7e98f4?w=400&h=400&fit=crop&auto=format', description: 'A radiant floral with peony, red apple, jasmine, and rose.', rating: 4.5, reviews: 1567 },
-    { id: 20, name: 'Byredo Gypsy Water', brand: 'Byredo', price: 180, category: 'woody', image: 'https://images.unsplash.com/photo-1563170351-be82bc888aa4?w=400&h=400&fit=crop&auto=format&sat=-100', description: 'An ode to the romani lifestyle, a colorful and free-spirited journey.', rating: 4.8, reviews: 892 }
-  ];
+  useEffect(()=>{
+    (async ()=>{
+      try{
+        setLoading(true);
+        const data = await listPerfumes();
+        setPerfumes(data);
+      } catch(err){
+        setError('Failed to load perfumes');
+      } finally { setLoading(false); }
+    })();
+  },[]);
 
-  const categories = [
-    { id: 'all', name: 'All Perfumes', count: perfumes.length },
-    { id: 'floral', name: 'Floral', count: perfumes.filter(p => p.category === 'floral').length },
-    { id: 'fresh', name: 'Fresh', count: perfumes.filter(p => p.category === 'fresh').length },
-    { id: 'oriental', name: 'Oriental', count: perfumes.filter(p => p.category === 'oriental').length },
-    { id: 'woody', name: 'Woody', count: perfumes.filter(p => p.category === 'woody').length },
-  ];
+  const categories = useMemo(()=>{
+    const counts = perfumes.reduce((acc,p)=>{ const c = p.category || 'uncategorized'; acc[c] = (acc[c]||0)+1; return acc; },{});
+    const list = Object.entries(counts).map(([id,count])=>({ id, name: id.charAt(0).toUpperCase()+id.slice(1), count }));
+    list.sort((a,b)=> b.count - a.count);
+    return [{ id:'all', name:'All Perfumes', count: perfumes.length }, ...list];
+  },[perfumes]);
 
-  const filteredPerfumes =
-    selectedCategory === 'all'
-      ? perfumes
-      : perfumes.filter(perfume => perfume.category === selectedCategory);
+  const filteredPerfumes = selectedCategory === 'all' ? perfumes : perfumes.filter(p => p.category === selectedCategory);
 
   const handleProductClick = perfume => {
-    navigate(`/product/${perfume.id}`, { state: { perfume } });
+    navigate(`/product/${perfume._id}`, { state: { perfume } });
   };
 
   const toggleFavorite = (e, perfumeId) => {
@@ -91,17 +80,21 @@ const ProductsAll = () => {
           ))}
         </div>
 
+        {/* Status */}
+        {loading && <div className="text-center py-8">Loading...</div>}
+        {error && !loading && <div className="text-center py-8 text-red-500">{error}</div>}
+
         {/* Products Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {filteredPerfumes.map(perfume => (
+          {!loading && !error && filteredPerfumes.map(perfume => (
             <div
-              key={perfume.id}
+              key={perfume._id}
               onClick={() => handleProductClick(perfume)}
               className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer transform hover:scale-105"
             >
               <div className="relative overflow-hidden bg-gradient-to-br from-[#F2D785] to-[#F2C84B]">
                 <img
-                  src={perfume.image}
+                  src={perfume.imageUrl || 'https://via.placeholder.com/400x400?text=Fragrance'}
                   alt={perfume.name}
                   className="w-full h-64 object-contain p-4 group-hover:scale-110 transition-transform duration-300"
                   onError={e => {
@@ -109,9 +102,9 @@ const ProductsAll = () => {
                   }}
                 />
                 <button 
-                  onClick={(e) => toggleFavorite(e, perfume.id)}
+                  onClick={(e) => toggleFavorite(e, perfume._id)}
                   className={`inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:text-accent-foreground h-10 w-10 absolute top-4 right-4 z-10 bg-white/30 backdrop-blur-sm text-white rounded-full hover:bg-white/40 transition-colors duration-300 ${
-                    favorites.has(perfume.id) ? 'text-red-500' : 'text-white'
+                    favorites.has(perfume._id) ? 'text-red-500' : 'text-white'
                   }`}
                 >
                   <svg 
@@ -136,29 +129,22 @@ const ProductsAll = () => {
                   <span className="text-xs font-medium text-[#8C501B] bg-yellow-100 px-2 py-1 rounded-full uppercase tracking-wide">
                     {perfume.category}
                   </span>
-                  <div className="flex items-center space-x-1">
-                    <svg className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                      <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
-                    </svg>
-                    <span className="text-sm text-gray-600">{perfume.rating}</span>
-                  </div>
+                  <div className="flex items-center space-x-1"/>
                 </div>
 
                 <h3 className="font-bold text-lg text-gray-900 mb-1 group-hover:text-[#BF7C2A] transition-colors">
                   {perfume.name}
                 </h3>
-                <p className="text-gray-600 text-sm mb-3">{perfume.brand}</p>
+                <p className="text-gray-600 text-sm mb-3">{perfume.brand || 'Olfactive Echo'}</p>
 
                 <p className="text-gray-700 text-sm mb-4 line-clamp-2">
                   {perfume.description}
                 </p>
 
                 <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-500">
-                    {perfume.reviews.toLocaleString()} reviews
-                  </div>
+                  <div />
                   <div className="flex items-center space-x-2">
-                    <span className="text-2xl font-bold text-gray-900">${perfume.price}</span>
+                    <span className="text-2xl font-bold text-gray-900">₹{perfume.price}</span>
                   </div>
                 </div>
               </div>

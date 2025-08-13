@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Footer from '@/components/Footer';
 import LoginRedirectWrapper from '@/components/login/LoginRedirectWrapper';
+import { getPerfume, listPerfumes } from '@/api/perfume';
+import { useCart } from '@/context/CartContext';
+import toast from 'react-hot-toast';
 
 
 const Product = () => {
@@ -13,59 +16,79 @@ const Product = () => {
   const [activeTab, setActiveTab] = useState('description');
   const [selectedImage, setSelectedImage] = useState(0);
 
-  const product = location.state?.perfume || {
-    id: parseInt(id),
-    name: 'Chanel No. 5',
-    brand: 'Chanel',
-    price: 120,
-    category: 'floral',
-    image: '/assets/chanel-no5.jpg',
-    description: "The world's most iconic fragrance. A timeless bouquet of ylang-ylang and rose, heightened by woody base notes.",
-    rating: 4.8,
-    reviews: 2450,
-  };
+  const [product, setProduct] = useState(location.state?.perfume || null);
+  const [loading, setLoading] = useState(!product);
+  const [error, setError] = useState('');
 
-  const productImages = [
-    product.image,
-    product.image,
-    product.image,
-    product.image,
-    product.image
-  ];
+  useEffect(()=>{
+    if (product) return;
+    (async ()=>{
+      try{
+        setLoading(true);
+        const data = await getPerfume(id);
+        setProduct(data);
+      } catch(err){
+        setError('Product not found');
+      } finally { setLoading(false); }
+    })();
+  },[id]);
 
-  const sizes = [
+  const productImages = useMemo(()=>{
+    const img = product?.imageUrl || product?.image || 'https://via.placeholder.com/600x600?text=Fragrance';
+    return [img, img, img, img, img];
+  },[product]);
+
+  const sizes = useMemo(()=> product ? [
     { size: '30ml', price: product.price * 0.7, popular: false },
     { size: '50ml', price: product.price, popular: true },
     { size: '100ml', price: product.price * 1.6, popular: false },
-  ];
+  ] : [], [product]);
 
-  const currentPrice = sizes.find(s => s.size === selectedSize)?.price || product.price;
+  const currentPrice = sizes.find(s => s.size === selectedSize)?.price || (product?.price || 0);
 
-  const fragranceNotes = {
-    top: ['Bergamot', 'Lemon', 'Aldehydes'],
-    middle: ['Rose', 'Jasmine', 'Ylang-Ylang'],
-    base: ['Sandalwood', 'Vetiver', 'Vanilla'],
-  };
+  const fragranceNotes = useMemo(()=>({
+    top: product?.notes?.slice(0,3) || ['Bergamot','Lemon','Aldehydes'],
+    middle: product?.notes?.slice(3,6) || ['Rose','Jasmine','Ylang-Ylang'],
+    base: product?.notes?.slice(6,9) || ['Sandalwood','Vetiver','Vanilla'],
+  }),[product]);
 
-  const relatedProducts = [
-    { id: 2, name: 'Dior Sauvage', brand: 'Christian Dior', price: 95, image: '/assets/dior-sauvage.jpg' },
-    { id: 3, name: 'Tom Ford Black Orchid', brand: 'Tom Ford', price: 150, image: '/assets/tom-ford-black-orchid.jpg' },
-    { id: 4, name: 'Giorgio Armani Acqua di Gio', brand: 'Giorgio Armani', price: 85, image: '/assets/acqua-di-gio.jpg' },
-    { id: 5, name: 'Yves Saint Laurent Black Opium', brand: 'Yves Saint Laurent', price: 110, image: '/assets/ysl-black-opium.jpg' },
-  ];
+  const [related, setRelated] = useState([]);
+  useEffect(()=>{
+    (async ()=>{
+      try{
+        const all = await listPerfumes();
+        if (product) {
+          const rel = all.filter(p=> p._id !== product._id && (p.category === product.category || p.brand === product.brand)).slice(0,4);
+          setRelated(rel);
+        } else {
+          setRelated(all.slice(0,4));
+        }
+      } catch {}
+    })();
+  }, [product]);
+
+  const { addItem } = useCart();
 
   const handleAddToCart = () => {
-    alert(`Added ${quantity}x ${product.name} (${selectedSize}) to cart!`);
+    if (!product) return;
+    addItem({ ...product, selectedSize, effectivePrice: currentPrice }, quantity);
+    toast.success('Added to cart');
   };
 
   const handleBuyNow = () => {
-    alert(`Proceeding to checkout with ${quantity}x ${product.name} (${selectedSize})`);
+    handleAddToCart();
+    toast('Proceeding to checkout...', { icon: '🛒' });
+    navigate('/checkout');
   };
 
   return (
     <>
       <div className="min-h-screen bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {loading && <div className="py-24 text-center text-gray-500">Loading product...</div>}
+      {error && !loading && <div className="py-24 text-center text-red-500">{error}</div>}
+      {!loading && !error && product && (
+        <>
           {/* Breadcrumb */}
           <nav className="mb-6">
             <ol className="flex items-center space-x-2 text-sm">
@@ -81,7 +104,7 @@ const Product = () => {
                 </button>
               </li>
               <li className="text-gray-400">/</li>
-              <li className="text-[#8C501B] font-medium">{product.name}</li>
+        <li className="text-[#8C501B] font-medium">{product?.name}</li>
             </ol>
           </nav>
 
@@ -102,7 +125,7 @@ const Product = () => {
                   >
                     <img
                       src={img}
-                      alt={`${product.name} view ${index + 1}`}
+                      alt={`${product?.name || 'Fragrance'} view ${index + 1}`}
                       className="w-full h-full object-contain p-2"
                       onError={e => {
                         e.target.src = `https://images.unsplash.com/photo-1541643600914-78b084683601?w=80&h=80&fit=crop&auto=format`;
@@ -118,7 +141,7 @@ const Product = () => {
               <div className="bg-gradient-to-br from-[#F2D785] to-white rounded-2xl p-8 shadow-lg">
                 <img
                   src={productImages[selectedImage]}
-                  alt={product.name}
+                  alt={product?.name || 'Fragrance'}
                   className="w-full h-96 lg:h-[500px] object-contain"
                   onError={e => {
                     e.target.src = `https://images.unsplash.com/photo-1541643600914-78b084683601?w=600&h=600&fit=crop&auto=format`;
@@ -132,31 +155,18 @@ const Product = () => {
               {/* Product Header */}
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <span className="inline-block bg-[#F2C84B] text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                    {product.category}
-                  </span>
-                  <div className="flex items-center space-x-1">
-                    {[1, 2, 3, 4, 5].map(star => (
-                      <svg
-                        key={star}
-                        className={`w-5 h-5 ${star <= Math.floor(product.rating) ? 'text-[#F2C84B] fill-current' : 'text-gray-300'}`}
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
-                      </svg>
-                    ))}
-                    <span className="text-sm text-gray-600 ml-2">({product.reviews})</span>
-                  </div>
+                  <span className="inline-block bg-[#F2C84B] text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">{product.category}</span>
+                  <div className="flex items-center space-x-1" />
                 </div>
 
                 <h1 className="text-3xl lg:text-4xl font-bold text-[#8C501B] mb-2 font-serif">{product.name}</h1>
-                <p className="text-lg text-gray-600 mb-4">by {product.brand}</p>
+                <p className="text-lg text-gray-600 mb-4">by {product.brand || 'Olfactive Echo'}</p>
                 <p className="text-[#8C501B] leading-relaxed mb-6">{product.description}</p>
 
                 <div className="flex items-baseline space-x-3 mb-6">
-                  <span className="text-4xl font-bold text-[#F2C84B] font-serif">${currentPrice.toFixed(2)}</span>
-                  {selectedSize !== '50ml' && (
-                    <span className="text-xl text-gray-400 line-through">${product.price.toFixed(2)}</span>
+                  <span className="text-4xl font-bold text-[#F2C84B] font-serif">₹{currentPrice.toFixed(2)}</span>
+                  {selectedSize !== '50ml' && product && (
+                    <span className="text-xl text-gray-400 line-through">₹{product.price.toFixed(2)}</span>
                   )}
                 </div>
               </div>
@@ -171,7 +181,7 @@ const Product = () => {
                 >
                   {sizes.map(sizeOption => (
                     <option key={sizeOption.size} value={sizeOption.size}>
-                      {sizeOption.size} - ${sizeOption.price.toFixed(2)}
+                      {sizeOption.size} - ₹{sizeOption.price.toFixed(2)}
                     </option>
                   ))}
                 </select>
@@ -461,15 +471,15 @@ const Product = () => {
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {relatedProducts.map(relatedProduct => (
+              {related.map(relatedProduct => (
                 <div
-                  key={relatedProduct.id}
-                  onClick={() => navigate(`/product/${relatedProduct.id}`, { state: { perfume: relatedProduct } })}
+                  key={relatedProduct._id}
+                  onClick={() => navigate(`/product/${relatedProduct._id}`, { state: { perfume: relatedProduct } })}
                   className="bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer hover:scale-105"
                 >
                   <div className="bg-gradient-to-br from-[#F2D785] to-white p-4">
                     <img
-                      src={relatedProduct.image}
+                      src={relatedProduct.imageUrl || 'https://via.placeholder.com/300x300?text=Fragrance'}
                       alt={relatedProduct.name}
                       className="w-full h-40 object-contain group-hover:scale-110 transition-transform duration-300"
                       onError={e => {
@@ -483,12 +493,14 @@ const Product = () => {
                       {relatedProduct.name}
                     </h3>
                     <p className="text-sm text-gray-600 mb-2">{relatedProduct.brand}</p>
-                    <p className="text-lg font-bold text-[#F2C84B]">${relatedProduct.price}</p>
+                    <p className="text-lg font-bold text-[#F2C84B]">₹{relatedProduct.price}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
+        </>
+      )}
         </div>
       </div>
       <Footer />
