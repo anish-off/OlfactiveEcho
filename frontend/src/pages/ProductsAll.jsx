@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Footer from '@/components/Footer';
 import { listPerfumes } from '@/api/perfume';
+import { useWishlist } from '@/context/WishlistContext';
+import toast from 'react-hot-toast';
 
 const ProductsAll = () => {
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [favorites, setFavorites] = useState(new Set());
+  const { toggle: toggleWishlist, has } = useWishlist();
   const [perfumes, setPerfumes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -37,16 +39,10 @@ const ProductsAll = () => {
   };
 
   const toggleFavorite = (e, perfumeId) => {
-    e.stopPropagation(); // Prevent card click when clicking heart
-    setFavorites(prev => {
-      const newFavorites = new Set(prev);
-      if (newFavorites.has(perfumeId)) {
-        newFavorites.delete(perfumeId);
-      } else {
-        newFavorites.add(perfumeId);
-      }
-      return newFavorites;
-    });
+    e.stopPropagation();
+    const already = has(perfumeId);
+    toggleWishlist(perfumeId);
+    toast.success(already ? 'Removed from wishlist' : 'Added to wishlist');
   };
 
   return (
@@ -101,25 +97,22 @@ const ProductsAll = () => {
                     e.target.src = `https://images.unsplash.com/photo-1541643600914-78b084683601?w=400&h=400&fit=crop&auto=format`;
                   }}
                 />
-                <button 
+                <button
                   onClick={(e) => toggleFavorite(e, perfume._id)}
-                  className={`inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:text-accent-foreground h-10 w-10 absolute top-4 right-4 z-10 bg-white/30 backdrop-blur-sm text-white rounded-full hover:bg-white/40 transition-colors duration-300 ${
-                    favorites.has(perfume._id) ? 'text-red-500' : 'text-white'
-                  }`}
+                  aria-label={has(perfume._id) ? 'Remove from wishlist' : 'Add to wishlist'}
+                  className={`inline-flex items-center justify-center h-10 w-10 absolute top-4 right-4 z-10 rounded-full backdrop-blur-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 bg-white/30 hover:bg-white/40 ${has(perfume._id) ? 'text-red-500' : 'text-white'}`}
                 >
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    width="24" 
-                    height="24" 
-                    viewBox="0 0 24 24" 
-                    fill={favorites.has(perfume.id) ? "currentColor" : "none"} 
-                    stroke="currentColor" 
-                    strokeWidth="2" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    className="lucide lucide-heart h-5 w-5"
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill={has(perfume._id) ? 'currentColor' : 'none'}
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-5 w-5"
                   >
-                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
                   </svg>
                 </button>
               </div>

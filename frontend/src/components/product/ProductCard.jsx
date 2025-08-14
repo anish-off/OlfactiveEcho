@@ -8,7 +8,7 @@ import { useWishlist } from "@/context/WishlistContext";
 
 const ProductCard = ({ _id, id, name, description, price, imageUrl, image, notes }) => {
   const { addItem } = useCart();
-  const { toggle, has } = useWishlist();
+  const { toggle, has, hydrated } = useWishlist();
   const pid = _id || id;
   const wished = has(pid);
 
@@ -23,8 +23,9 @@ const ProductCard = ({ _id, id, name, description, price, imageUrl, image, notes
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
         <Button
           size="icon"
-            type="button"
+          type="button"
           variant={wished?"default":"ghost"}
+          disabled={!hydrated}
           onClick={(e)=>{ e.preventDefault(); toggle(pid); toast.success(wished? 'Removed from wishlist':'Added to wishlist'); }}
           className={`absolute top-4 right-4 z-10 rounded-full backdrop-blur-sm transition-colors duration-300 ${wished? 'bg-red-500 text-white hover:bg-red-600':'bg-white/30 text-white hover:bg-white/40'}`}
         >
