@@ -1,41 +1,39 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, Edit, Heart, ShoppingBag, Clock, MapPin, CreditCard, LogOut } from 'lucide-react';
+import { ChevronRight, Edit, Heart, ShoppingBag, Clock, MapPin, CreditCard } from 'lucide-react';
+import { useWishlist } from '@/context/WishlistContext';
+import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
+import { myOrders } from '@/api/order';
+import toast from 'react-hot-toast';
 
 const Profile = () => {
   const [activeTab, setActiveTab] = useState('profile');
-  const [user, setUser] = useState({
-    name: 'Alex Morgan',
-    email: 'alex.morgan@example.com',
-    phone: '+1 (555) 123-4567',
-    joinDate: 'Member since June 2023',
-    avatar: '/assets/default-avatar.jpg',
-    orders: 12,
-    wishlist: 8,
-    addresses: [
-      {
-        id: 1,
-        type: 'Home',
-        address: '123 Perfume Lane, Apt 4B, New York, NY 10001',
-        default: true
-      },
-      {
-        id: 2,
-        type: 'Work',
-        address: '456 Scent Street, Floor 12, New York, NY 10005',
-        default: false
+  const { user } = useAuth();
+  const { ids: wishlistIds } = useWishlist();
+  const { totalItems } = useCart();
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      if (!user) return;
+      try {
+        setOrdersLoading(true);
+        const data = await myOrders();
+        if (!ignore) setOrders(data);
+      } catch (e) {
+        toast.error('Failed to load orders');
+      } finally {
+        if (!ignore) setOrdersLoading(false);
       }
-    ],
-    paymentMethods: [
-      {
-        id: 1,
-        type: 'Visa',
-        last4: '4242',
-        expiry: '12/25',
-        default: true
-      }
-    ]
-  });
+    })();
+    return () => { ignore = true; };
+  }, [user]);
+
+  const joinDate = user?.createdAt ? new Date(user.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short' }) : '';
+  const avatar = user?.avatarUrl || '/assets/default-avatar.jpg';
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -49,8 +47,8 @@ const Profile = () => {
             <div className="flex items-center gap-6">
               <div className="relative">
                 <img 
-                  src={user.avatar} 
-                  alt={user.name} 
+                  src={avatar} 
+                  alt={user?.name||'User'} 
                   className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md"
                 />
                 <button className="absolute bottom-0 right-0 bg-amber-600 text-white p-2 rounded-full shadow-md hover:bg-amber-700 transition-colors">
@@ -58,9 +56,9 @@ const Profile = () => {
                 </button>
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
-                <p className="text-gray-600">{user.email}</p>
-                <p className="text-sm text-amber-700 mt-1">{user.joinDate}</p>
+                <h1 className="text-2xl font-bold text-gray-900">{user?.name||'Guest'}</h1>
+                <p className="text-gray-600">{user?.email||'No email'}</p>
+                {joinDate && <p className="text-sm text-amber-700 mt-1">Member since {joinDate}</p>}
               </div>
             </div>
           </div>
@@ -74,7 +72,7 @@ const Profile = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Orders</p>
-                  <p className="text-xl font-bold text-gray-900">{user.orders}</p>
+                  <p className="text-xl font-bold text-gray-900">{ordersLoading ? '...' : orders.length}</p>
                 </div>
               </div>
             </div>
@@ -85,7 +83,7 @@ const Profile = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Wishlist</p>
-                  <p className="text-xl font-bold text-gray-900">{user.wishlist}</p>
+                  <p className="text-xl font-bold text-gray-900">{wishlistIds.length}</p>
                 </div>
               </div>
             </div>
@@ -95,8 +93,8 @@ const Profile = () => {
                   <Clock className="text-amber-600" size={20} />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Member Since</p>
-                  <p className="text-xl font-bold text-gray-900">Jun 2023</p>
+                  <p className="text-sm text-gray-500">Cart Items</p>
+                  <p className="text-xl font-bold text-gray-900">{totalItems}</p>
                 </div>
               </div>
             </div>
@@ -149,7 +147,7 @@ const Profile = () => {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg">
                     <div>
                       <p className="text-sm text-gray-500">Full Name</p>
-                      <p className="font-medium text-gray-900">{user.name}</p>
+                      <p className="font-medium text-gray-900">{user?.name||'Guest'}</p>
                     </div>
                     <button className="text-amber-600 hover:text-amber-700 text-sm font-medium flex items-center gap-1">
                       <Edit size={14} /> Edit
@@ -158,7 +156,7 @@ const Profile = () => {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg">
                     <div>
                       <p className="text-sm text-gray-500">Email Address</p>
-                      <p className="font-medium text-gray-900">{user.email}</p>
+                      <p className="font-medium text-gray-900">{user?.email||'-'}</p>
                     </div>
                     <button className="text-amber-600 hover:text-amber-700 text-sm font-medium flex items-center gap-1">
                       <Edit size={14} /> Edit
@@ -167,7 +165,7 @@ const Profile = () => {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg">
                     <div>
                       <p className="text-sm text-gray-500">Phone Number</p>
-                      <p className="font-medium text-gray-900">{user.phone}</p>
+                      <p className="font-medium text-gray-900">{user?.phone||'-'}</p>
                     </div>
                     <button className="text-amber-600 hover:text-amber-700 text-sm font-medium flex items-center gap-1">
                       <Edit size={14} /> Edit
@@ -186,7 +184,7 @@ const Profile = () => {
                   </button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {user.addresses.map(address => (
+                  {(user?.addresses||[]).map(address => (
                     <div key={address.id} className={`border rounded-lg p-4 ${address.default ? 'border-amber-300 bg-amber-50' : 'border-gray-200'}`}>
                       <div className="flex justify-between">
                         <div>
@@ -219,7 +217,7 @@ const Profile = () => {
                   </button>
                 </div>
                 <div className="space-y-4">
-                  {user.paymentMethods.map(payment => (
+                  {(user?.paymentMethods||[]).map(payment => (
                     <div key={payment.id} className={`border rounded-lg p-4 ${payment.default ? 'border-amber-300 bg-amber-50' : 'border-gray-200'}`}>
                       <div className="flex justify-between">
                         <div>
@@ -255,32 +253,30 @@ const Profile = () => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="p-6">
                 <div className="flex flex-col gap-4">
-                  {[1, 2].map(order => (
-                    <div key={order} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-gray-100 last:border-0">
+                  {(ordersLoading ? [] : orders).slice(0,2).map(order => (
+                    <div key={order._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-gray-100 last:border-0">
                       <div className="flex items-center gap-4">
                         <div className="bg-amber-100 p-3 rounded-lg">
                           <ShoppingBag className="text-amber-600" size={20} />
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">Order #OLF{1000 + order}</p>
-                          <p className="text-sm text-gray-500">Placed on June {10 + order}, 2023</p>
+                          <p className="font-medium text-gray-900">Order #{order._id.slice(-6)}</p>
+                          <p className="text-sm text-gray-500">Placed on {new Date(order.createdAt).toLocaleDateString()}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
                         <div>
-                          <p className="text-sm text-gray-500">Status</p>
-                          <p className="font-medium text-amber-600">Delivered</p>
-                        </div>
-                        <div>
                           <p className="text-sm text-gray-500">Total</p>
-                          <p className="font-medium text-gray-900">${120 + (order * 30)}.00</p>
+                          <p className="font-medium text-gray-900">₹{order.total?.toFixed(2) || '0.00'}</p>
                         </div>
-                        <Link to={`/orders/${order}`} className="text-amber-600 hover:text-amber-700">
+                        <Link to={`/orders/${order._id}`} className="text-amber-600 hover:text-amber-700">
                           <ChevronRight size={20} />
                         </Link>
                       </div>
                     </div>
                   ))}
+                  {ordersLoading && <div className="text-sm text-gray-500">Loading orders...</div>}
+                  {!ordersLoading && orders.length === 0 && <div className="text-sm text-gray-500">No orders yet.</div>}
                 </div>
               </div>
             </div>
