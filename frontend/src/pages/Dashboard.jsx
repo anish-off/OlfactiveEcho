@@ -1,7 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useWishlist } from '@/context/WishlistContext';
+import { useCart } from '@/context/CartContext';
 
 const Dashboard = () => {
+  const { ids: wishlistIds } = useWishlist();
+  const { totalItems } = useCart();
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -12,14 +16,14 @@ const Dashboard = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Recent Orders</h3>
-            <p className="text-gray-600 mb-4">You have 3 recent orders</p>
-            <Link to="/orders" className="text-amber-600 hover:text-amber-700">View all orders →</Link>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Cart</h3>
+            <p className="text-gray-600 mb-4">{totalItems} item{totalItems!==1 && 's'} in cart</p>
+            <Link to="/cart" className="text-amber-600 hover:text-amber-700">View cart →</Link>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Wishlist</h3>
-            <p className="text-gray-600 mb-4">5 items in your wishlist</p>
+            <p className="text-gray-600 mb-4">{wishlistIds.length} item{wishlistIds.length!==1 && 's'} in wishlist</p>
             <Link to="/wishlist" className="text-amber-600 hover:text-amber-700">View wishlist →</Link>
           </div>
 
