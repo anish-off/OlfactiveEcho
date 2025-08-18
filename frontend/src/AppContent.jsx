@@ -22,7 +22,7 @@ import AboutUsPage from './pages/AboutUsPage'; // Added missing import
 import AccountSettings from './pages/AccountSettings'; // Added missing import
 import WishlistPage from './pages/WishlistPage'; // Added missing import
 import ProductDetail from './pages/ProductDetail'; // Added missing import
-import Chatbot from './pages/Chatbot';
+import PerfumeFinder from './pages/PerfumeFinder';
 
 import LayoutWithSidebar from './components/layout/LayoutWithSidebar';
 import NavbarWrapper from './components/NavbarWrapper';
@@ -47,7 +47,7 @@ const AppContent = () => {
   <Route path="/shop" element={<Shop />} /> {/* Public Shop page */}
   <Route path="/about" element={<AboutUsPage />} /> {/* Added missing About route */}
   <Route path="/collections" element={<Shop />} /> {/* Added Collections route - using Shop page for now */}
-  <Route path="/chatbot" element={<Chatbot />} /> {/* Chatbot public route */}
+  <Route path="/chatbot" element={<PerfumeFinder />} /> {/* Chatbot public route */}
 
         {/* Protected routes wrapped with ProtectedRoute and LayoutWithSidebar */}
         <Route element={<ProtectedRoute><LayoutWithSidebar /></ProtectedRoute>}>
