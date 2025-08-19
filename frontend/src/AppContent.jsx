@@ -42,30 +42,29 @@ const AppContent = () => {
         <Route path="/products" element={<Products />} />
         <Route path="/products/all" element={<ProductsAll />} />
         <Route path="/product/:id" element={<Product />} />
-  <Route path="/forgot-password" element={<ForgotPassword />} /> {/* Public Forgot Password */}
-  <Route path="/samples" element={<Samples />} /> {/* Public Samples page */}
-  <Route path="/shop" element={<Shop />} /> {/* Public Shop page */}
-  <Route path="/about" element={<AboutUsPage />} /> {/* Added missing About route */}
-  <Route path="/collections" element={<Shop />} /> {/* Added Collections route - using Shop page for now */}
-  <Route path="/chatbot" element={<PerfumeFinder />} /> {/* Chatbot public route */}
+        <Route path="/forgot-password" element={<ForgotPassword />} /> 
+        <Route path="/samples" element={<Samples />} /> 
+        <Route path="/shop" element={<Shop />} />
+        <Route path="/about" element={<AboutUsPage />} /> 
+        <Route path="/collections" element={<Shop />} /> 
+        <Route path="/chatbot" element={<PerfumeFinder />} /> 
 
         {/* Protected routes wrapped with ProtectedRoute and LayoutWithSidebar */}
         <Route element={<ProtectedRoute><LayoutWithSidebar /></ProtectedRoute>}>
           <Route path="/profile" element={<Profile />} />
-          <Route path="/orders" element={<div>Orders Page</div>} /> {/* Placeholder */}
-          <Route path="/wishlist" element={<WishlistPage />} /> {/* Fixed to use WishlistPage component */}
+          <Route path="/orders" element={<div>Orders Page</div>} /> 
+          <Route path="/wishlist" element={<WishlistPage />} /> 
           <Route path="/cart" element={<Cart />} />
-          <Route path="/settings" element={<AccountSettings />} /> {/* Fixed to use AccountSettings page */}
+          <Route path="/settings" element={<AccountSettings />} /> 
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/community" element={<Community />} />
           <Route path="/new-post" element={<NewPost />} />
-          <Route path="/post-detail/:id" element={<PostDetail />} /> {/* Assuming dynamic ID */}
+          <Route path="/post-detail/:id" element={<PostDetail />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/sample-checkout" element={<SampleCheckout />} />
-          <Route path="/product-detail/:id" element={<ProductDetail />} /> {/* Added ProductDetail route */}
+          <Route path="/product-detail/:id" element={<ProductDetail />} /> 
         </Route>
 
-        {/* Catch-all for unmatched routes - redirects to home if not logged in, or profile if logged in */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </>
