@@ -16,6 +16,7 @@ import {
   Users,
   Info
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import LoginRedirectWrapper from './login/LoginRedirectWrapper';
@@ -68,10 +69,33 @@ const Navbar = () => {
   const handleAuthRequired = (e, action = 'access this feature') => {
     if (!isLoggedIn) {
       e.preventDefault();
-      const shouldLogin = window.confirm(`Please login to ${action}. Would you like to go to the login page?`);
-      if (shouldLogin) {
-        navigate('/login');
-      }
+      toast((t) => (
+        <div className="flex flex-col gap-2 text-sm">
+          <div className="text-gray-800 font-medium">
+            Please login to {action}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                navigate('/login');
+              }}
+              className="px-3 py-1 bg-amber-600 text-white rounded text-xs font-medium hover:bg-amber-700 transition-colors"
+            >
+              Go to Login
+            </button>
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs font-medium hover:bg-gray-300 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ), {
+        duration: 5000,
+        position: 'top-center',
+      });
     }
   };
 
