@@ -6,7 +6,7 @@ const Home = () => {
   const { isLoggedIn } = useAuth();
 
   return (
-    <main id="top" className="relative overflow-hidden pt-16"> {/* Added pt-16 for navbar height */}
+    <main id="top" className="relative overflow-hidden">
       <div className="hero-bg" aria-hidden="true" />
       <div className="hero-overlay" />
       <div className="hero-container">

@@ -130,7 +130,7 @@ body { @apply bg-background text-foreground font-sans antialiased; }
 .dark .scroll-mouse { @apply border-white/40; }
 
 /* Space for fixed navbar */
-body::before { content: ""; display:block; height:60px; }
+body::before { content: ""; display:block; }
 
 @media (max-width: 640px) {
   .hero-title { @apply text-4xl leading-[1.05]; }
