@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ Fast RAG System - GPU Accelerated</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ Fast RAG System</h1>
+        <div class="subtitle">
+            GPU-Accelerated Research Paper Analysis
+            <span class="gpu-badge" id="gpuBadge">🔍 Checking GPU...</span>
+        </div>
+
+        <div class="stats-row" id="statsRow" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-number" id="paperCount">0</div>
+                <div class="stat-label">Papers Loaded</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="chunkCount">0</div>
+                <div class="stat-label">Text Chunks</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="setupTime">0s</div>
+                <div class="stat-label">Setup Time</div>
+            </div>
+        </div>
+
+        <div class="setup-section">
+            <h2 class="section-title">🚀 Setup Knowledge Base</h2>
+            <div class="form-row">
+                <div class="input-group">
+                    <label for="topic">Research Topic:</label>
+                    <input type="text" id="topic" placeholder="e.g., deep learning, computer vision, NLP" value="machine learning">
+                </div>
+                <div class="input-group">
+                    <label for="limit">Papers:</label>
+                    <select id="limit">
+                        <option value="3">3 (Fast)</option>
+                        <option value="5" selected>5 (Balanced)</option>
+                        <option value="8">8 (Comprehensive)</option>
+                        <option value="10">10 (Maximum)</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="yearFilter">Minimum Year:</label>
+                    <input type="number" id="yearFilter" min="1900" max="2025" placeholder="e.g., 2020">
+                </div>
+                <div class="input-group">
+                    <label for="minCitations">Minimum Citations:</label>
+                    <input type="number" id="minCitations" min="0" placeholder="e.g., 100">
+                </div>
+            </div>
+            <button id="setupBtn" onclick="setupKnowledgeBase()" class="fast-btn">
+                ⚡ Fast Setup with GPU
+            </button>
+            <div id="setupStatus"></div>
+            <div class="progress-bar" id="progressBar" style="display: none;">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div id="papersList"></div>
+        </div>
+
+        <div class="query-section">
+            <h2 class="section-title">💡 Ask Questions</h2>
+            <div class="input-group">
+                <label for="question">Your Question:</label>
+                <textarea id="question" rows="3" placeholder="What are the main findings? Which methods work best? What are the limitations?" disabled></textarea>
+            </div>
+            <button id="queryBtn" onclick="askQuestion()" disabled>
+                🧠 Get AI Answer
+            </button>
+            <div id="queryStatus"></div>
+            <div id="answer"></div>
+        </div>
+
+        <div id="downloadSection" style="display: none;">
+            <h2 class="section-title">📥 Downloads</h2>
+            <button id="downloadSummariesBtn" onclick="downloadSummaries()">📄 Download Summaries PDF</button>
+            <button id="downloadPapersBtn" onclick="downloadPapers()">📚 Download All PDFs (ZIP)</button>
+        </div>
+
+        <div class="performance-tips">
+            <h3>⚡ GPU Performance Tips:</h3>
+            <ul>
+                <li><strong>Batch Processing:</strong> Multiple papers are processed in parallel</li>
+                <li><strong>GPU Acceleration:</strong> Embeddings created 5-10x faster on RTX 3050</li>
+                <li><strong>Memory Optimization:</strong> Efficient VRAM usage for 6GB GPU</li>
+                <li><strong>Caching:</strong> Model loaded once and reused for all queries</li>
+                <li><strong>Fast Retrieval:</strong> FAISS index optimized for GPU memory</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
