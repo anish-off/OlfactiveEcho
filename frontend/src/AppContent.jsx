@@ -21,7 +21,6 @@ import Shop from './pages/Shop'; // New Import
 import AboutUsPage from './pages/AboutUsPage'; // Added missing import
 import AccountSettings from './pages/AccountSettings'; // Added missing import
 import WishlistPage from './pages/WishlistPage'; // Added missing import
-import ProductDetail from './pages/ProductDetail'; // Added missing import
 import PerfumeFinder from './pages/PerfumeFinder';
 import Orders from './pages/Orders';
 
@@ -63,7 +62,6 @@ const AppContent = () => {
           <Route path="/post-detail/:id" element={<PostDetail />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/sample-checkout" element={<SampleCheckout />} />
-          <Route path="/product-detail/:id" element={<ProductDetail />} /> 
         </Route>
 
         <Route path="*" element={<Navigate to="/" />} />

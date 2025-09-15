@@ -159,7 +159,7 @@ const Product = () => {
                   <div className="flex items-center space-x-1" />
                 </div>
 
-                <h1 className="text-3xl lg:text-4xl font-bold text-[#8C501B] mb-2 mb-2">{product.name}</h1>
+                <h1 className="text-3xl lg:text-4xl font-bold text-black mb-2 mb-2">{product.name}</h1>
                 <p className="text-lg text-gray-600 mb-4">by {product.brand || 'Olfactive Echo'}</p>
                 <p className="text-[#8C501B] leading-relaxed mb-6">{product.description}</p>
 
