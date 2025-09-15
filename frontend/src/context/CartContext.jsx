@@ -44,7 +44,7 @@ export const CartProvider = ({ children }) => {
   const clearCart = () => setItems([]);
 
   const totalItems = items.reduce((s,i)=>s+i.quantity,0);
-  const subtotal = items.reduce((s,i)=>s + (i.product.price||0)*i.quantity,0);
+  const subtotal = items.reduce((s,i)=>s + (i.product?.price||0)*i.quantity,0);
 
   return (
     <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, totalItems, subtotal }}>

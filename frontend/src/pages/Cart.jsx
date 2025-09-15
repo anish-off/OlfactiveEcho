@@ -6,9 +6,9 @@ const formatCurrency = (v) => `₹${(v ?? 0).toFixed(2)}`;
 
 const Cart = () => {
   const { items, updateQuantity, removeItem, clearCart, subtotal, totalItems } = useCart();
-  const taxRate = 0.0; // adjust if needed
+  const taxRate = 0.12; // 12% tax
   const tax = subtotal * taxRate;
-  const shipping = subtotal > 0 ? 0 : 0;
+  const shipping = subtotal > 0 && subtotal < 1000 ? 50 : 0; // ₹50 shipping if subtotal < ₹1000
   const total = subtotal + tax + shipping;
 
   if (!items.length) {
@@ -60,7 +60,7 @@ const Cart = () => {
         <div className="space-y-3 mb-6">
           <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
           <div className="flex justify-between"><span>Shipping</span><span>{shipping === 0 ? 'Free' : formatCurrency(shipping)}</span></div>
-          {taxRate > 0 && <div className="flex justify-between"><span>Tax</span><span>{formatCurrency(tax)}</span></div>}
+          <div className="flex justify-between"><span>Tax</span><span>{formatCurrency(tax)}</span></div>
           <div className="flex justify-between font-bold text-lg pt-3 border-t border-border/50"><span>Total</span><span>{formatCurrency(total)}</span></div>
         </div>
         <Link to="/checkout" className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg hover:bg-primary/90 transition-colors duration-300 font-medium text-center block">Proceed to Checkout</Link>

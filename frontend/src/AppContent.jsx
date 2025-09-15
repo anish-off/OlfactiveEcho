@@ -23,6 +23,7 @@ import AccountSettings from './pages/AccountSettings'; // Added missing import
 import WishlistPage from './pages/WishlistPage'; // Added missing import
 import ProductDetail from './pages/ProductDetail'; // Added missing import
 import PerfumeFinder from './pages/PerfumeFinder';
+import Orders from './pages/Orders';
 
 import LayoutWithSidebar from './components/layout/LayoutWithSidebar';
 import NavbarWrapper from './components/NavbarWrapper';
@@ -52,7 +53,7 @@ const AppContent = () => {
         {/* Protected routes wrapped with ProtectedRoute and LayoutWithSidebar */}
         <Route element={<ProtectedRoute><LayoutWithSidebar /></ProtectedRoute>}>
           <Route path="/profile" element={<Profile />} />
-          <Route path="/orders" element={<div>Orders Page</div>} /> 
+          <Route path="/orders" element={<Orders />} /> 
           <Route path="/wishlist" element={<WishlistPage />} /> 
           <Route path="/cart" element={<Cart />} />
           <Route path="/settings" element={<AccountSettings />} /> 

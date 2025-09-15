@@ -66,7 +66,7 @@ def retrieve_entries(query, embedder, index, df, k=3):
         print(f"Retrieval error: {e}")
         return None
 
-def generate_response(query, retrieved_data, ollama_model="llama3:latest", max_tokens=200):
+def generate_response(query, retrieved_data, ollama_model="llama3:8b", max_tokens=200):
     try:
         prompt = f"Query: {query}\nRelevant Perfumes:\n"
         for idx, row in retrieved_data.iterrows():
