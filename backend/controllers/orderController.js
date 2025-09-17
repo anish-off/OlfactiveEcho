@@ -1,5 +1,7 @@
 const Order = require('../models/Order');
 const Perfume = require('../models/Perfume');
+const User = require('../models/User');
+const { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail } = require('../services/emailService');
 
 // Calculate shipping based on order value and location
 const calculateShipping = (subtotal, shippingAddress) => {
@@ -126,6 +128,9 @@ exports.checkout = async (req, res) => {
 // Create order after payment confirmation
 exports.createOrder = async (req, res) => {
   try {
+    console.log('📦 Creating order for user:', req.user._id);
+    console.log('📋 Order data received:', JSON.stringify(req.body, null, 2));
+    
     const { 
       items, 
       sample, 
@@ -168,6 +173,20 @@ exports.createOrder = async (req, res) => {
     });
     
     await order.populate('items.perfume sample.samplePerfume');
+    
+    // Send order confirmation email
+    try {
+      console.log('📧 Attempting to send order confirmation email...');
+      const user = await User.findById(req.user._id);
+      console.log('👤 User found for email:', user.email);
+      
+      const emailResult = await sendOrderConfirmationEmail(order, user);
+      console.log('✅ Order confirmation email sent successfully:', emailResult.messageId);
+    } catch (emailError) {
+      console.error('❌ Failed to send order confirmation email:', emailError.message);
+      console.error('📧 Email error details:', emailError);
+      // Don't fail the order creation if email fails
+    }
     
     res.status(201).json({
       success: true,
@@ -240,6 +259,9 @@ exports.updateOrderStatus = async (req, res) => {
       updateData.trackingNumber = trackingNumber;
     }
     
+    const oldOrder = await Order.findById(req.params.id);
+    const oldStatus = oldOrder.status;
+    
     const order = await Order.findByIdAndUpdate(
       req.params.id,
       updateData,
@@ -248,6 +270,17 @@ exports.updateOrderStatus = async (req, res) => {
     
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
+    }
+    
+    // Send status update email if status changed
+    if (oldStatus !== status) {
+      try {
+        await sendOrderStatusUpdateEmail(order, order.user, oldStatus, status);
+        console.log('Order status update email sent successfully');
+      } catch (emailError) {
+        console.error('Failed to send order status update email:', emailError);
+        // Don't fail the status update if email fails
+      }
     }
     
     res.json({

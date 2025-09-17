@@ -23,6 +23,7 @@ import AccountSettings from './pages/AccountSettings'; // Added missing import
 import WishlistPage from './pages/WishlistPage'; // Added missing import
 import PerfumeFinder from './pages/PerfumeFinder';
 import Orders from './pages/Orders';
+import OrderConfirmation from './components/order/OrderConfirmation';
 
 import LayoutWithSidebar from './components/layout/LayoutWithSidebar';
 import NavbarWrapper from './components/NavbarWrapper';
@@ -62,6 +63,7 @@ const AppContent = () => {
           <Route path="/post-detail/:id" element={<PostDetail />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/sample-checkout" element={<SampleCheckout />} />
+          <Route path="/order-confirmation" element={<OrderConfirmation />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" />} />

@@ -90,12 +90,14 @@ const ProductsAll = () => {
             >
               <div className="relative overflow-hidden bg-gradient-to-br from-[#F2D785] to-[#F2C84B]">
                 <img
-                  src={perfume.imageUrl || 'https://via.placeholder.com/400x400?text=Fragrance'}
+                  src={'https://via.placeholder.com/400x400?text=Fragrance'}
                   alt={perfume.name}
                   className="w-full h-64 object-contain p-4 group-hover:scale-110 transition-transform duration-300"
-                  onError={e => {
-                    e.target.src = `https://images.unsplash.com/photo-1541643600914-78b084683601?w=400&h=400&fit=crop&auto=format`;
-                  }}
+                  // Commented out original image source and error handling
+                  // src={perfume.imageUrl || 'https://via.placeholder.com/400x400?text=Fragrance'}
+                  // onError={e => {
+                  //   e.target.src = `https://images.unsplash.com/photo-1541643600914-78b084683601?w=400&h=400&fit=crop&auto=format`;
+                  // }}
                 />
                 <button
                   onClick={(e) => toggleFavorite(e, perfume._id)}

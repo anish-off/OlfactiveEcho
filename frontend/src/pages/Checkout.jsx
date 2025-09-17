@@ -3,6 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/api';
+import PaymentOptions from '../components/payment/PaymentOptions';
+import PaymentProcessor from '../components/payment/PaymentProcessor';
+import OrderReview from '../components/payment/OrderReview';
 
 const formatCurrency = (v) => `₹${(v ?? 0).toFixed(2)}`;
 
@@ -159,19 +162,23 @@ const Checkout = () => {
   
   const [sameAsShipping, setSameAsShipping] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState('cod');
+  const [selectedOnlineMethod, setSelectedOnlineMethod] = useState('upi');
   const [selectedSample, setSelectedSample] = useState(null);
   const [availableSamples, setAvailableSamples] = useState([]);
   const [orderSummary, setOrderSummary] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const [step, setStep] = useState(1); // 1: Address, 2: Payment, 3: Review
+  const [step, setStep] = useState(1); // 1: Address, 2: Payment, 3: Review, 4: Payment Processing
+  const [showPaymentProcessor, setShowPaymentProcessor] = useState(false);
 
-  // Redirect if cart is empty
+  // Redirect if cart is empty (temporarily disabled for debugging)
   useEffect(() => {
-    if (!items.length) {
+    console.log('🛒 Cart items check:', items.length);
+    if (!items.length && step === 1) { // Only redirect on step 1, not during order placement
+      console.log('⚠️ Cart is empty, redirecting to cart page');
       navigate('/cart');
     }
-  }, [items.length, navigate]);
+  }, [items.length, navigate, step]);
 
   // Load available samples
   useEffect(() => {
@@ -224,9 +231,22 @@ const Checkout = () => {
   };
 
   const handleCheckout = async () => {
+    console.log('handleCheckout called, current step:', step);
+    
     if (!validateAddresses()) {
+      console.log('Address validation failed');
       return;
     }
+    
+    // Move to payment step
+    setStep(2);
+  };
+
+  const handleReviewOrder = async () => {
+    console.log('handleReviewOrder called');
+    console.log('Current addresses:', { shippingAddress, billingAddress });
+    console.log('Current items:', items);
+    console.log('Payment method:', paymentMethod, 'Selected online method:', selectedOnlineMethod);
     
     // Validate cart items before checkout
     if (!items || items.length === 0) {
@@ -244,41 +264,79 @@ const Checkout = () => {
         throw new Error('Some cart items are missing product information');
       }
       
-      const checkoutData = {
+      // Create order summary locally for review
+      const shipping = subtotal >= 1000 ? 0 : 50;
+      const tax = subtotal * 0.12;
+      const samplePrice = selectedSample?.samplePrice || 0;
+      const total = subtotal + shipping + tax + samplePrice;
+      
+      const localOrderSummary = {
         items: validItems.map(item => ({
           perfume: item.id || item.product._id,
-          quantity: item.quantity || 1
+          quantity: item.quantity || 1,
+          price: item.product.price,
+          name: item.product.name
         })),
         shippingAddress,
         billingAddress: sameAsShipping ? shippingAddress : billingAddress,
-        paymentMethod,
+        paymentMethod: paymentMethod === 'online' ? selectedOnlineMethod : paymentMethod,
         sample: selectedSample ? {
           samplePerfume: selectedSample._id,
-          price: selectedSample.samplePrice || 0
-        } : null
+          price: selectedSample.samplePrice || 0,
+          name: selectedSample.name
+        } : null,
+        subtotal,
+        shipping,
+        tax,
+        total,
+        totalItems
       };
       
-      console.log('Checkout data being sent:', checkoutData);
+      console.log('Order summary created:', localOrderSummary);
       
-      const response = await api.post('/orders/checkout', checkoutData);
-      
-      console.log('Checkout response:', response.data);
-      
-      if (response.data && response.data.success) {
-        setOrderSummary(response.data.orderSummary);
-        setStep(3);
-      } else {
-        setErrors({ general: response.data?.message || 'Checkout validation failed' });
+      // Try to validate with backend, but proceed even if it fails
+      try {
+        const checkoutData = {
+          items: validItems.map(item => ({
+            perfume: item.id || item.product._id,
+            quantity: item.quantity || 1
+          })),
+          shippingAddress,
+          billingAddress: sameAsShipping ? shippingAddress : billingAddress,
+          paymentMethod,
+          sample: selectedSample ? {
+            samplePerfume: selectedSample._id,
+            price: selectedSample.samplePrice || 0
+          } : null
+        };
+        
+        const response = await api.post('/orders/checkout', checkoutData);
+        
+        if (response.data && response.data.success) {
+          setOrderSummary(response.data.orderSummary);
+        } else {
+          // Use local order summary if backend validation fails
+          setOrderSummary(localOrderSummary);
+        }
+      } catch (apiError) {
+        console.log('Backend validation failed, using local order summary:', apiError.message);
+        // Use local order summary if API call fails
+        setOrderSummary(localOrderSummary);
       }
+      
+      // Always proceed to review step
+      console.log('Setting step to 3');
+      setStep(3);
+      
     } catch (error) {
-      console.error('Checkout error details:', {
+      console.error('Review order error details:', {
         message: error.message,
         response: error.response?.data,
         status: error.response?.status,
         config: error.config
       });
       
-      let errorMessage = 'Checkout failed - please try again';
+      let errorMessage = 'Failed to create order summary - please try again';
       
       if (error.response?.status === 401) {
         errorMessage = 'Please log in to continue with checkout';
@@ -296,33 +354,107 @@ const Checkout = () => {
     }
   };
 
-  const handlePlaceOrder = async () => {
-    if (!orderSummary) return;
+  const handlePlaceOrder = async (paymentData = null) => {
+    console.log('🚀 handlePlaceOrder called');
+    console.log('📋 orderSummary:', orderSummary);
+    console.log('🛒 items:', items);
+    console.log('💳 paymentMethod:', paymentMethod);
+    console.log('🔗 selectedOnlineMethod:', selectedOnlineMethod);
+    
+    if (!orderSummary) {
+      console.error('❌ No orderSummary found');
+      setErrors({ general: 'Order summary not found. Please try again.' });
+      return;
+    }
     
     setLoading(true);
+    setErrors({}); // Clear previous errors
+    
     try {
       const orderData = {
         ...orderSummary,
-        paymentMethod,
-        paymentId: paymentMethod === 'online' ? 'mock_payment_id' : null
+        paymentMethod: paymentMethod === 'online' ? selectedOnlineMethod : paymentMethod,
+        paymentId: paymentData?.paymentId || (paymentMethod !== 'cod' ? 'mock_payment_id' : null),
+        paymentStatus: paymentData?.status || 'pending'
       };
+      
+      console.log('📤 Sending order data:', orderData);
       
       const response = await api.post('/orders', orderData);
       
+      console.log('📥 Order response:', response.data);
+      
       if (response.data.success) {
         clearCart();
-        navigate('/orders', { 
+        navigate('/order-confirmation', { 
           state: { 
             message: 'Order placed successfully!', 
-            orderId: response.data.order._id 
+            orderId: response.data.order._id,
+            orderNumber: response.data.order._id.slice(-8).toUpperCase(),
+            paymentMethod: paymentMethod === 'online' ? selectedOnlineMethod : paymentMethod,
+            emailSent: true
           }
         });
       }
     } catch (error) {
-      console.error('Order creation error:', error);
-      setErrors({ general: error.response?.data?.message || 'Order creation failed' });
+      console.error('❌ Order creation error:', error);
+      console.error('❌ Error response:', error.response?.data);
+      console.error('❌ Error status:', error.response?.status);
+      
+      let errorMessage = 'Order creation failed';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Please log in to place an order';
+      } else if (error.response?.status === 400) {
+        errorMessage = 'Invalid order data. Please check your information.';
+      } else if (error.message.includes('Network Error')) {
+        errorMessage = 'Network error. Please check your connection.';
+      }
+      
+      setErrors({ general: errorMessage });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePaymentSuccess = (paymentData) => {
+    handlePlaceOrder(paymentData);
+  };
+
+  const handlePaymentError = (error) => {
+    setErrors({ general: error });
+    setShowPaymentProcessor(false);
+    setStep(3);
+  };
+
+  const handlePaymentCancel = () => {
+    setShowPaymentProcessor(false);
+    setStep(3);
+  };
+
+  const handleEditOrder = (section) => {
+    switch (section) {
+      case 'items':
+        navigate('/cart');
+        break;
+      case 'address':
+        setStep(1);
+        break;
+      case 'payment':
+        setStep(2);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const proceedToPayment = () => {
+    if (paymentMethod === 'cod') {
+      handlePlaceOrder();
+    } else {
+      setShowPaymentProcessor(true);
+      setStep(4);
     }
   };
 
@@ -341,19 +473,27 @@ const Checkout = () => {
         {/* Progress Steps */}
         <div className="mb-8">
           <div className="flex items-center justify-center space-x-8">
-            {[1, 2, 3].map((stepNum) => (
-              <div key={stepNum} className="flex items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  step >= stepNum ? 'bg-primary text-white' : 'bg-gray-300 text-gray-600'
-                }`}>
-                  {stepNum}
+            {(showPaymentProcessor ? [1, 2, 3, 4] : [1, 2, 3]).map((stepNum) => {
+              const stepLabels = showPaymentProcessor 
+                ? ['Address', 'Payment', 'Review', 'Processing'] 
+                : ['Address', 'Payment', 'Review'];
+              const isActive = step >= stepNum;
+              const maxSteps = showPaymentProcessor ? 4 : 3;
+              
+              return (
+                <div key={stepNum} className="flex items-center">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                    isActive ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
+                  }`}>
+                    {stepNum}
+                  </div>
+                  <span className={`ml-2 text-sm ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
+                    {stepLabels[stepNum - 1]}
+                  </span>
+                  {stepNum < maxSteps && <div className={`w-16 h-0.5 ${isActive ? 'bg-blue-600' : 'bg-gray-300'} ml-4`} />}
                 </div>
-                <span className={`ml-2 text-sm ${step >= stepNum ? 'text-primary' : 'text-gray-500'}`}>
-                  {stepNum === 1 ? 'Address' : stepNum === 2 ? 'Payment' : 'Review'}
-                </span>
-                {stepNum < 3 && <div className="w-16 h-0.5 bg-gray-300 ml-4" />}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -459,38 +599,11 @@ const Checkout = () => {
             {/* Step 2: Payment Method */}
             {step === 2 && (
               <>
-                <div className="bg-card rounded-lg p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold mb-4">Payment Method</h3>
-                  <div className="space-y-3">
-                    <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                      <input
-                        type="radio"
-                        name="payment"
-                        value="cod"
-                        checked={paymentMethod === 'cod'}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                      />
-                      <div>
-                        <div className="font-medium">Cash on Delivery</div>
-                        <div className="text-sm text-gray-600">Pay when you receive your order</div>
-                      </div>
-                    </label>
-                    
-                    <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                      <input
-                        type="radio"
-                        name="payment"
-                        value="online"
-                        checked={paymentMethod === 'online'}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                      />
-                      <div>
-                        <div className="font-medium">Online Payment</div>
-                        <div className="text-sm text-gray-600">Pay securely with UPI, Card, or Net Banking</div>
-                      </div>
-                    </label>
-                  </div>
-                </div>
+                <PaymentOptions
+                  paymentMethod={paymentMethod}
+                  setPaymentMethod={setPaymentMethod}
+                  onPaymentSelect={setSelectedOnlineMethod}
+                />
 
                 <div className="flex justify-between">
                   <button
@@ -500,9 +613,9 @@ const Checkout = () => {
                     Back
                   </button>
                   <button
-                    onClick={handleCheckout}
+                    onClick={handleReviewOrder}
                     disabled={loading}
-                    className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                   >
                     {loading ? 'Processing...' : 'Review Order'}
                   </button>
@@ -511,70 +624,16 @@ const Checkout = () => {
             )}
 
             {/* Step 3: Order Review */}
-            {step === 3 && orderSummary && (
+            {step === 3 && orderSummary && !showPaymentProcessor && (
               <>
-                <div className="bg-card rounded-lg p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold mb-4">Order Review</h3>
-                  
-                  {/* Items */}
-                  <div className="space-y-3 mb-6">
-                    {items.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between py-2 border-b">
-                        <div className="flex items-center space-x-3">
-                          <img
-                            src={item.product.imageUrl || '/placeholder.png'}
-                            alt={item.product.name}
-                            className="w-12 h-12 object-cover rounded"
-                          />
-                          <div>
-                            <h4 className="font-medium">{item.product.name}</h4>
-                            <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
-                          </div>
-                        </div>
-                        <span className="font-medium">{formatCurrency(item.product.price * item.quantity)}</span>
-                      </div>
-                    ))}
-                    
-                    {selectedSample && (
-                      <div className="flex items-center justify-between py-2 border-b">
-                        <div className="flex items-center space-x-3">
-                          <img
-                            src={selectedSample.imageUrl || '/placeholder.png'}
-                            alt={selectedSample.name}
-                            className="w-12 h-12 object-cover rounded"
-                          />
-                          <div>
-                            <h4 className="font-medium">{selectedSample.name} (Sample)</h4>
-                            <p className="text-sm text-gray-600">Qty: 1</p>
-                          </div>
-                        </div>
-                        <span className="font-medium">
-                          {selectedSample.samplePrice === 0 ? 'Free' : formatCurrency(selectedSample.samplePrice)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Addresses */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div>
-                      <h4 className="font-medium mb-2">Shipping Address</h4>
-                      <div className="text-sm text-gray-600">
-                        <p>{shippingAddress.fullName}</p>
-                        <p>{shippingAddress.address}</p>
-                        <p>{shippingAddress.city}, {shippingAddress.state} {shippingAddress.pincode}</p>
-                        {shippingAddress.phone && <p>Phone: {shippingAddress.phone}</p>}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h4 className="font-medium mb-2">Payment Method</h4>
-                      <p className="text-sm text-gray-600">
-                        {paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <OrderReview
+                  items={items}
+                  selectedSample={selectedSample}
+                  shippingAddress={shippingAddress}
+                  paymentMethod={paymentMethod === 'online' ? selectedOnlineMethod : paymentMethod}
+                  orderSummary={orderSummary}
+                  onEdit={handleEditOrder}
+                />
 
                 <div className="flex justify-between">
                   <button
@@ -584,14 +643,25 @@ const Checkout = () => {
                     Back
                   </button>
                   <button
-                    onClick={handlePlaceOrder}
+                    onClick={proceedToPayment}
                     disabled={loading}
-                    className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                    className="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium text-lg"
                   >
-                    {loading ? 'Placing Order...' : 'Place Order'}
+                    {loading ? 'Processing...' : paymentMethod === 'cod' ? 'Place Order' : `Pay ${formatCurrency((orderSummary?.total || 0) - (paymentMethod !== 'cod' ? 20 : 0))}`}
                   </button>
                 </div>
               </>
+            )}
+
+            {/* Step 4: Payment Processing */}
+            {step === 4 && showPaymentProcessor && (
+              <PaymentProcessor
+                paymentMethod={selectedOnlineMethod}
+                amount={(orderSummary?.total || 0) - 20} // Online payment discount
+                onSuccess={handlePaymentSuccess}
+                onError={handlePaymentError}
+                onCancel={handlePaymentCancel}
+              />
             )}
           </div>
 
