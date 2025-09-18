@@ -3,12 +3,48 @@ import { Link } from 'react-router-dom';
 
 const Shop = () => {
   const categories = [
-    { name: 'Men\'s Fragrances', count: 24, image: '/assets/mens.jpg' },
-    { name: 'Women\'s Fragrances', count: 32, image: '/assets/womens.jpg' },
-    { name: 'Unisex Fragrances', count: 18, image: '/assets/unisex.jpg' },
-    { name: 'Niche Fragrances', count: 15, image: '/assets/niche.jpg' },
-    { name: 'Limited Editions', count: 8, image: '/assets/limited.jpg' },
-    { name: 'Gift Sets', count: 12, image: '/assets/gifts.jpg' },
+    { 
+      name: 'Men\'s Fragrances', 
+      count: 24, 
+      image: '/assets/mens.jpg',
+      route: '/products/all?gender=men',
+      description: 'Bold and sophisticated scents for men'
+    },
+    { 
+      name: 'Women\'s Fragrances', 
+      count: 32, 
+      image: '/assets/womens.jpg',
+      route: '/products/all?gender=women',
+      description: 'Elegant and captivating fragrances for women'
+    },
+    { 
+      name: 'Unisex Fragrances', 
+      count: 18, 
+      image: '/assets/unisex.jpg',
+      route: '/products/all?gender=unisex',
+      description: 'Versatile scents for everyone'
+    },
+    { 
+      name: 'Citrus Collection', 
+      count: 15, 
+      image: '/assets/citrus.jpg',
+      route: '/products/all?family=citrus',
+      description: 'Fresh and energizing citrus fragrances'
+    },
+    { 
+      name: 'Oriental Collection', 
+      count: 12, 
+      image: '/assets/oriental.jpg',
+      route: '/products/all?family=oriental',
+      description: 'Rich and exotic oriental scents'
+    },
+    { 
+      name: 'Floral Collection', 
+      count: 20, 
+      image: '/assets/floral.jpg',
+      route: '/products/all?family=floral',
+      description: 'Beautiful and romantic floral bouquets'
+    },
   ];
 
   return (
@@ -28,21 +64,35 @@ const Shop = () => {
           {categories.map((category, index) => (
             <Link
               key={index}
-              to="/products"
-              className="group block bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+              to={category.route}
+              className="group block bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
             >
-              <div className="h-48 bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center">
-                <span className="text-amber-600 text-4xl font-bold group-hover:scale-110 transition-transform">
+              <div className="h-48 bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-amber-600/20"></div>
+                <span className="text-amber-700 text-5xl font-bold group-hover:scale-110 transition-transform duration-300 relative z-10">
                   {category.name.charAt(0)}
                 </span>
               </div>
               <div className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-amber-600 transition-colors">
+                <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-amber-600 transition-colors">
                   {category.name}
                 </h3>
-                <p className="text-gray-600">
-                  {category.count} products available
+                <p className="text-gray-600 mb-3 text-sm">
+                  {category.description}
                 </p>
+                <div className="flex items-center justify-between">
+                  <span className="text-amber-600 font-medium">
+                    {category.count} products
+                  </span>
+                  <svg 
+                    className="w-5 h-5 text-amber-600 group-hover:translate-x-1 transition-transform" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
               </div>
             </Link>
           ))}

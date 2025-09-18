@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Footer from '@/components/Footer';
 import LoginRedirectWrapper from '@/components/login/LoginRedirectWrapper';
+import SampleSection from '@/components/product/SampleSection';
 import { getPerfume, listPerfumes } from '@/api/perfume';
 import { useCart } from '@/context/CartContext';
 import toast from 'react-hot-toast';
@@ -46,11 +47,37 @@ const Product = () => {
 
   const currentPrice = sizes.find(s => s.size === selectedSize)?.price || (product?.price || 0);
 
-  const fragranceNotes = useMemo(()=>({
-    top: product?.notes?.slice(0,3) || ['Bergamot','Lemon','Aldehydes'],
-    middle: product?.notes?.slice(3,6) || ['Rose','Jasmine','Ylang-Ylang'],
-    base: product?.notes?.slice(6,9) || ['Sandalwood','Vetiver','Vanilla'],
-  }),[product]);
+  const fragranceNotes = useMemo(()=>{
+    if (!product?.notes) return {
+      top: ['Bergamot','Lemon','Aldehydes'],
+      middle: ['Rose','Jasmine','Ylang-Ylang'],
+      base: ['Sandalwood','Vetiver','Vanilla'],
+    };
+    
+    // Handle new nested format
+    if (product.notes.top || product.notes.middle || product.notes.base) {
+      return {
+        top: product.notes.top && product.notes.top.length > 0 ? product.notes.top : ['Citrus','Fresh'],
+        middle: product.notes.middle && product.notes.middle.length > 0 ? product.notes.middle : ['Floral','Heart'],
+        base: product.notes.base && product.notes.base.length > 0 ? product.notes.base : ['Woody','Warm'],
+      };
+    }
+    
+    // Handle legacy array format
+    if (Array.isArray(product.notes)) {
+      return {
+        top: product.notes.slice(0,3).length > 0 ? product.notes.slice(0,3) : ['Citrus','Fresh'],
+        middle: product.notes.slice(3,6).length > 0 ? product.notes.slice(3,6) : ['Floral','Heart'],
+        base: product.notes.slice(6,9).length > 0 ? product.notes.slice(6,9) : ['Woody','Warm'],
+      };
+    }
+    
+    return {
+      top: ['Bergamot','Lemon','Aldehydes'],
+      middle: ['Rose','Jasmine','Ylang-Ylang'],
+      base: ['Sandalwood','Vetiver','Vanilla'],
+    };
+  },[product]);
 
   const [related, setRelated] = useState([]);
   useEffect(()=>{
@@ -58,7 +85,14 @@ const Product = () => {
       try{
         const all = await listPerfumes();
         if (product) {
-          const rel = all.filter(p=> p._id !== product._id && (p.category === product.category || p.brand === product.brand)).slice(0,4);
+          // First try to find products with same scent family, then fallback to brand/category
+          const rel = all.filter(p=> 
+            p._id !== product._id && (
+              p.scentFamily === product.scentFamily || 
+              p.category === product.category || 
+              p.brand === product.brand
+            )
+          ).slice(0,4);
           setRelated(rel);
         } else {
           setRelated(all.slice(0,4));
@@ -67,12 +101,16 @@ const Product = () => {
     })();
   }, [product]);
 
-  const { addItem } = useCart();
+  const { addItem, addSample, subtotal } = useCart();
 
   const handleAddToCart = () => {
     if (!product) return;
     addItem({ ...product, selectedSize, effectivePrice: currentPrice }, quantity);
     toast.success('Added to cart');
+  };
+
+  const handleAddSample = (sampleProduct, sampleQuantity) => {
+    addSample(sampleProduct, sampleQuantity);
   };
 
   const handleBuyNow = () => {
@@ -219,10 +257,19 @@ const Product = () => {
                   onClick={handleBuyNow}
                   className="w-full bg-white border-2 border-[#BF7C2A] text-[#BF7C2A] py-4 px-6 rounded-lg font-semibold text-lg hover:bg-[#BF7C2A] hover:text-white transition-all duration-200 hover:scale-105"
                 >
-                  COMPARE • TALK TO A HEADPHONE NERD
+                  BUY NOW
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* Sample Section - Full Width */}
+          <div className="mb-12">
+            <SampleSection 
+              product={product} 
+              onAddSample={handleAddSample}
+              cartTotal={subtotal}
+            />
           </div>
 
           {/* Details Cards Section */}
@@ -245,12 +292,22 @@ const Product = () => {
                 </li>
                 <li className="flex items-center">
                   <span className="w-1.5 h-1.5 bg-[#F2C84B] rounded-full mr-2"></span>
-                  Shipping by
+                  Express Shipping Available
                 </li>
                 <li className="flex items-center">
                   <span className="w-1.5 h-1.5 bg-[#F2C84B] rounded-full mr-2"></span>
-                  Over $99 = Free • Has-Aus ($99)
+                  {currentPrice >= 2500 ? (
+                    <span className="text-green-600 font-medium">✓ FREE Shipping Applied!</span>
+                  ) : (
+                    `Add ₹${(2500 - currentPrice).toFixed(0)} for Free Shipping`
+                  )}
                 </li>
+                {product?.volume && (
+                  <li className="flex items-center">
+                    <span className="w-1.5 h-1.5 bg-[#F2C84B] rounded-full mr-2"></span>
+                    {product.volume}ml - Premium Packaging
+                  </li>
+                )}
               </ul>
             </div>
 
@@ -275,55 +332,92 @@ const Product = () => {
                 </li>
                 <li className="flex items-center">
                   <span className="w-1.5 h-1.5 bg-[#F2C84B] rounded-full mr-2"></span>
-                  1 Year Warranty
+                  100% Authentic Guarantee
                 </li>
+                {product?.concentration && (
+                  <li className="flex items-center">
+                    <span className="w-1.5 h-1.5 bg-[#F2C84B] rounded-full mr-2"></span>
+                    {product.concentration} Concentration
+                  </li>
+                )}
               </ul>
             </div>
 
-            {/* Support */}
+            {/* Perfume Details */}
             <div className="bg-white border border-[#F2D785] rounded-lg p-6 shadow-lg">
               <div className="flex items-center space-x-3 mb-4">
                 <div className="w-8 h-8 bg-[#F2C84B] rounded-full flex items-center justify-center">
                   <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M2 3a1 1 0 00-1 1v10a1 1 0 001 1h2.153a1 1 0 00.986-.836l.74-4.435a1 1 0 00-.54-1.06l-1.548-.773a11.037 11.037 0 016.105-6.105l.773 1.549a1 1 0 001.06.54l4.435-.74a1 1 0 00.836-.986V3a1 1 0 00-1-1h-2C7.82 2 2 7.82 2 15v2.153a1 1 0 00.836.986l4.435.74a1 1 0 001.06-.54l.774-1.548A11.037 11.037 0 0118 10c0 1.83-.44 3.525-1.21 5.017l-1.31-1.31z" />
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h3 className="font-semibold text-[#8C501B]">BUY IT WITH</h3>
+                <h3 className="font-semibold text-[#8C501B]">PERFUME DETAILS</h3>
               </div>
-              <div className="bg-[#F2D785] rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-[#8C501B] rounded-full"></div>
-                    <div>
-                      <p className="font-medium text-[#8C501B] text-sm">HEADPHONE ZONE X KZ</p>
-                      <p className="text-xs text-gray-600">SPECIAL CASE</p>
+              <div className="space-y-3">
+                {/* Brand and Category */}
+                <div className="bg-[#F2D785] rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 bg-[#8C501B] rounded-full flex items-center justify-center">
+                        <span className="text-white font-bold text-xs">
+                          {(product?.brand || 'OE').charAt(0)}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-[#8C501B] text-sm">{product?.brand || 'Olfactive Echo'}</p>
+                        <p className="text-xs text-gray-600 capitalize">{product?.scentFamily || 'Premium'} Family</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-[#8C501B]">+$89</p>
-                    <p className="text-xs text-gray-500">SAVE</p>
-                  </div>
+                </div>
+                
+                {/* Additional Product Info */}
+                <div className="space-y-2 text-sm">
+                  {product?.longevity && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Longevity:</span>
+                      <span className="font-medium text-[#8C501B]">{product.longevity}</span>
+                    </div>
+                  )}
+                  {product?.sillage && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Sillage:</span>
+                      <span className="font-medium text-[#8C501B] capitalize">{product.sillage}</span>
+                    </div>
+                  )}
+                  {product?.intensity && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Intensity:</span>
+                      <span className="font-medium text-[#8C501B] capitalize">{product.intensity}</span>
+                    </div>
+                  )}
+                  {product?.gender && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">For:</span>
+                      <span className="font-medium text-[#8C501B] capitalize">{product.gender}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
           {/* Fragrance Notes Section - Full Width */}
-          <div className="bg-[#F2D785] rounded-lg p-6 shadow-lg mb-12">
+          <div className="bg-gradient-to-br from-yellow-100 via-amber-50 to-white rounded-xl p-6 shadow-lg mb-12 max-w-full">
             <h2 className="font-bold text-2xl text-[#8C501B] mb-6 text-center">Fragrance Notes</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
               {/* Top Notes */}
               <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-md">
+                <div className="w-16 h-16 bg-gradient-to-br from-white to-yellow-50 rounded-full flex items-center justify-center mb-3 shadow-md border border-yellow-200">
                   <svg className="w-8 h-8 text-[#8C501B]" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
                 </div>
                 <h3 className="font-bold text-[#8C501B] text-lg mb-3">Top Notes</h3>
-                <div className="space-y-2">
+                <div className="flex flex-wrap gap-2 justify-center w-full">
                   {fragranceNotes.top.map((note, index) => (
-                    <div key={index} className="bg-white rounded-lg px-4 py-2 shadow-sm">
-                      <span className="text-sm text-[#8C501B]">{note}</span>
+                    <div key={index} className="bg-gradient-to-r from-white to-yellow-50 rounded-full px-3 py-1.5 shadow-sm border border-yellow-100 hover:shadow-md transition-all duration-200 hover:scale-105">
+                      <span className="text-xs font-medium text-[#8C501B] capitalize">{note}</span>
                     </div>
                   ))}
                 </div>
@@ -331,16 +425,16 @@ const Product = () => {
 
               {/* Middle Notes */}
               <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-md">
+                <div className="w-16 h-16 bg-gradient-to-br from-white to-yellow-50 rounded-full flex items-center justify-center mb-3 shadow-md border border-yellow-200">
                   <svg className="w-8 h-8 text-[#8C501B]" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
                 </div>
                 <h3 className="font-bold text-[#8C501B] text-lg mb-3">Middle Notes</h3>
-                <div className="space-y-2">
+                <div className="flex flex-wrap gap-2 justify-center w-full">
                   {fragranceNotes.middle.map((note, index) => (
-                    <div key={index} className="bg-white rounded-lg px-4 py-2 shadow-sm">
-                      <span className="text-sm text-[#8C501B]">{note}</span>
+                    <div key={index} className="bg-gradient-to-r from-white to-yellow-50 rounded-full px-3 py-1.5 shadow-sm border border-yellow-100 hover:shadow-md transition-all duration-200 hover:scale-105">
+                      <span className="text-xs font-medium text-[#8C501B] capitalize">{note}</span>
                     </div>
                   ))}
                 </div>
@@ -348,16 +442,16 @@ const Product = () => {
 
               {/* Base Notes */}
               <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-md">
+                <div className="w-16 h-16 bg-gradient-to-br from-white to-yellow-50 rounded-full flex items-center justify-center mb-3 shadow-md border border-yellow-200">
                   <svg className="w-8 h-8 text-[#8C501B]" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
                 </div>
                 <h3 className="font-bold text-[#8C501B] text-lg mb-3">Base Notes</h3>
-                <div className="space-y-2">
+                <div className="flex flex-wrap gap-2 justify-center w-full">
                   {fragranceNotes.base.map((note, index) => (
-                    <div key={index} className="bg-white rounded-lg px-4 py-2 shadow-sm">
-                      <span className="text-sm text-[#8C501B]">{note}</span>
+                    <div key={index} className="bg-gradient-to-r from-white to-yellow-50 rounded-full px-3 py-1.5 shadow-sm border border-yellow-100 hover:shadow-md transition-all duration-200 hover:scale-105">
+                      <span className="text-xs font-medium text-[#8C501B] capitalize">{note}</span>
                     </div>
                   ))}
                 </div>

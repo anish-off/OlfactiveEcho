@@ -1,0 +1,40 @@
+<svg width="200" height="300" viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bottleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e5e7eb;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#f3f4f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d1d5db;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="liquidGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#f59e0b;stop-opacity:0.9" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Bottle Body -->
+  <rect x="60" y="80" width="80" height="160" rx="8" ry="8" fill="url(#bottleGradient)" stroke="#9ca3af" stroke-width="2"/>
+  
+  <!-- Liquid -->
+  <rect x="65" y="120" width="70" height="115" rx="4" ry="4" fill="url(#liquidGradient)"/>
+  
+  <!-- Bottle Neck -->
+  <rect x="85" y="50" width="30" height="35" fill="url(#bottleGradient)" stroke="#9ca3af" stroke-width="2"/>
+  
+  <!-- Cap -->
+  <rect x="80" y="40" width="40" height="20" rx="4" ry="4" fill="#6b7280" stroke="#4b5563" stroke-width="1"/>
+  
+  <!-- Label -->
+  <rect x="70" y="140" width="60" height="40" rx="2" ry="2" fill="white" stroke="#d1d5db" stroke-width="1"/>
+  
+  <!-- Brand Text -->
+  <text x="100" y="155" text-anchor="middle" font-family="serif" font-size="8" font-weight="bold" fill="#374151">PERFUME</text>
+  <text x="100" y="168" text-anchor="middle" font-family="serif" font-size="6" fill="#6b7280">Premium</text>
+  
+  <!-- Spray Nozzle -->
+  <circle cx="100" cy="45" r="3" fill="#374151"/>
+  
+  <!-- Decorative elements -->
+  <circle cx="100" cy="200" r="2" fill="#fbbf24" opacity="0.6"/>
+  <circle cx="90" cy="190" r="1.5" fill="#fbbf24" opacity="0.4"/>
+  <circle cx="110" cy="185" r="1" fill="#fbbf24" opacity="0.3"/>
+</svg>

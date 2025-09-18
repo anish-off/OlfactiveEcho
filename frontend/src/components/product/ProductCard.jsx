@@ -2,62 +2,199 @@ import React from "react";
 import toast from 'react-hot-toast';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Heart, ShoppingCart, HeartOff } from "lucide-react";
+import { Heart, ShoppingCart, HeartOff, Star, Package } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 
-const ProductCard = ({ _id, id, name, description, price, imageUrl, image, notes }) => {
+const ProductCard = ({ 
+  _id, 
+  id, 
+  name, 
+  brand,
+  description, 
+  price, 
+  imageUrl, 
+  image, 
+  notes, 
+  scentFamily,
+  intensity,
+  rating,
+  reviewCount,
+  isPopular,
+  isNew,
+  stock,
+  concentration
+}) => {
   const { addItem } = useCart();
   const { toggle, has, hydrated } = useWishlist();
   const pid = _id || id;
   const wished = has(pid);
 
+  // Handle both old and new note formats
+  const getAllNotes = () => {
+    if (!notes) return [];
+    if (Array.isArray(notes)) return notes; // Legacy format
+    
+    // New nested format
+    const allNotes = [];
+    if (notes.top) allNotes.push(...notes.top);
+    if (notes.middle) allNotes.push(...notes.middle);
+    if (notes.base) allNotes.push(...notes.base);
+    return allNotes;
+  };
+
+  const displayNotes = getAllNotes();
+  const displayImage = imageUrl || image || `/perfume-images/${name?.toLowerCase().replace(/\s+/g, '-')}.svg`;
+
   return (
     <Card className="group relative flex flex-col overflow-hidden rounded-xl border border-gray-100 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
       <div className="relative aspect-square overflow-hidden">
         <img
-          src={imageUrl || image}
+          src={displayImage}
           alt={name}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          onError={(e) => {
+            e.target.src = '/perfume-images/default-perfume.svg';
+          }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+        
+        {/* Badges */}
+        <div className="absolute top-2 left-2 flex flex-col gap-1">
+          {isNew && (
+            <span className="px-2 py-1 bg-green-500 text-white text-xs font-medium rounded">
+              New
+            </span>
+          )}
+          {isPopular && (
+            <span className="px-2 py-1 bg-amber-500 text-white text-xs font-medium rounded">
+              Popular
+            </span>
+          )}
+          {stock <= 5 && stock > 0 && (
+            <span className="px-2 py-1 bg-red-500 text-white text-xs font-medium rounded">
+              Low Stock
+            </span>
+          )}
+        </div>
+
+        {/* Wishlist Button */}
         <Button
           size="icon"
           type="button"
           variant={wished?"default":"ghost"}
           disabled={!hydrated}
           onClick={(e)=>{ e.preventDefault(); toggle(pid); toast.success(wished? 'Removed from wishlist':'Added to wishlist'); }}
-          className={`absolute top-4 right-4 z-10 rounded-full backdrop-blur-sm transition-colors duration-300 ${wished? 'bg-red-500 text-white hover:bg-red-600':'bg-white/30 text-white hover:bg-white/40'}`}
+          className={`absolute top-2 right-2 z-10 rounded-full backdrop-blur-sm transition-colors duration-300 ${wished? 'bg-red-500 text-white hover:bg-red-600':'bg-white/30 text-white hover:bg-white/40'}`}
         >
           {wished ? <HeartOff className="h-5 w-5" /> : <Heart className="h-5 w-5" />}
         </Button>
       </div>
 
-      <CardHeader className="p-5 flex-grow">
-        <CardTitle className="text-xl font-bold text-gray-900">{name}</CardTitle>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {notes?.slice(0,4).map(tag => (
-            <span key={tag} className="text-xs font-medium bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">
-              {tag}
+      <CardHeader className="p-4 flex-grow">
+        <div className="mb-2">
+          <CardTitle className="text-lg font-bold text-gray-900 line-clamp-1">{name}</CardTitle>
+          {brand && (
+            <p className="text-sm text-gray-600 mt-1">{brand}</p>
+          )}
+        </div>
+
+        {/* Rating */}
+        {rating > 0 && (
+          <div className="flex items-center gap-1 mb-2">
+            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+            <span className="text-sm font-medium">{rating}</span>
+            {reviewCount > 0 && (
+              <span className="text-xs text-gray-500">({reviewCount})</span>
+            )}
+          </div>
+        )}
+
+        {/* Scent Family & Intensity */}
+        <div className="flex flex-wrap gap-1 mb-3">
+          {scentFamily && (
+            <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-1 rounded-full capitalize">
+              {scentFamily}
+            </span>
+          )}
+          {intensity && (
+            <span className="text-xs font-medium bg-green-100 text-green-700 px-2 py-1 rounded-full capitalize">
+              {intensity}
+            </span>
+          )}
+          {concentration && (
+            <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+              {concentration}
+            </span>
+          )}
+        </div>
+
+        {/* Notes */}
+        <div className="flex flex-wrap gap-1">
+          {displayNotes.slice(0,3).map((note, index) => (
+            <span key={index} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+              {note}
             </span>
           ))}
+          {displayNotes.length > 3 && (
+            <span className="text-xs text-gray-500 px-2 py-1">
+              +{displayNotes.length - 3} more
+            </span>
+          )}
         </div>
       </CardHeader>
 
-      <CardContent className="p-5 pt-0">
-        <p className="text-sm text-gray-600 mb-4 line-clamp-2">{description}</p>
-        <div className="flex items-center justify-between">
-          <span className="text-xl font-bold text-primary">₹{price}</span>
+      <CardContent className="p-4 pt-0">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xl font-bold text-primary">₹{price?.toLocaleString()}</span>
+          {stock <= 0 ? (
+            <span className="text-sm text-red-500 font-medium">Out of Stock</span>
+          ) : (
+            <span className="text-sm text-green-600">{stock} in stock</span>
+          )}
+        </div>
+        
+        <div className="flex gap-2">
           <Button
             variant="default"
             size="sm"
             type="button"
-            onClick={()=>{ addItem({ _id: pid, name, price, imageUrl, notes, description }); toast.success('Added to cart'); }}
-            className="rounded-full gap-1.5"
+            disabled={stock <= 0}
+            onClick={()=>{ 
+              addItem({ 
+                _id: pid, 
+                name, 
+                brand,
+                price, 
+                imageUrl: displayImage, 
+                notes: displayNotes, 
+                description,
+                scentFamily,
+                intensity,
+                concentration
+              }); 
+              toast.success('Added to cart'); 
+            }}
+            className="flex-1 rounded-full gap-1.5"
           >
             <ShoppingCart className="h-4 w-4" />
             Add to Cart
           </Button>
+          
+          {stock > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => {
+                // Navigate to sample or product detail page
+                window.location.href = `/product/${pid}`;
+              }}
+              className="rounded-full"
+            >
+              <Package className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

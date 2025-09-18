@@ -55,10 +55,17 @@ exports.checkout = async (req, res) => {
     const perfumeDocs = await Perfume.find({ _id: { $in: perfumeIds } });
     const perfumeMap = perfumeDocs.reduce((acc, p) => { acc[p._id] = p; return acc; }, {});
     
-    let subtotal = 0;
-    const orderItems = [];
+    // Separate regular items and samples
+    const regularItems = items.filter(item => !item.isSample && !item.product?.isSample);
+    const sampleItems = items.filter(item => item.isSample || item.product?.isSample);
     
-    for (const item of items) {
+    let regularSubtotal = 0;
+    let sampleSubtotal = 0;
+    const orderItems = [];
+    const orderSamples = [];
+    
+    // Process regular perfume items
+    for (const item of regularItems) {
       const perfumeId = item.perfume || item.id;
       const perfume = perfumeMap[perfumeId];
       
@@ -71,7 +78,7 @@ exports.checkout = async (req, res) => {
       }
       
       const itemTotal = perfume.price * item.quantity;
-      subtotal += itemTotal;
+      regularSubtotal += itemTotal;
       
       orderItems.push({
         perfume: perfume._id,
@@ -80,8 +87,36 @@ exports.checkout = async (req, res) => {
       });
     }
     
-    // Handle sample if provided
-    const quantitySum = items.reduce((s, i) => s + i.quantity, 0);
+    // Free sample threshold (₹5000)
+    const freeThreshold = 5000;
+    const isFreeEligible = regularSubtotal >= freeThreshold;
+    
+    // Process sample items with free sample logic
+    for (const sampleItem of sampleItems) {
+      const sampleId = sampleItem.perfume || sampleItem.id || sampleItem.originalProductId;
+      
+      // For samples, we might need to get the original product or use sample-specific pricing
+      let samplePrice = sampleItem.price || 0;
+      
+      // Apply free sample logic
+      if (isFreeEligible) {
+        samplePrice = 0; // Free samples for orders ≥ ₹5000
+      }
+      
+      sampleSubtotal += samplePrice * sampleItem.quantity;
+      
+      orderSamples.push({
+        originalProductId: sampleItem.originalProductId || sampleId,
+        sampleSize: sampleItem.sampleSize || '2ml',
+        quantity: sampleItem.quantity,
+        price: samplePrice,
+        isFree: isFreeEligible
+      });
+    }
+    
+    const subtotal = regularSubtotal + sampleSubtotal;
+    
+    // Handle legacy sample format (for backward compatibility)
     let sampleData = {};
     if (sample && sample.samplePerfume) {
       const samplePerfume = await Perfume.findById(sample.samplePerfume);
@@ -89,8 +124,8 @@ exports.checkout = async (req, res) => {
         throw new Error('Sample perfume not found');
       }
       sampleData.samplePerfume = sample.samplePerfume;
-      sampleData.price = quantitySum >= 2 ? 0 : (sample.price || 5);
-      subtotal += sampleData.price;
+      sampleData.price = isFreeEligible ? 0 : (sample.price || 5);
+      // Don't add to subtotal as it will be included in order summary separately
     }
     
     // Calculate shipping and tax
@@ -101,14 +136,20 @@ exports.checkout = async (req, res) => {
     // Prepare order summary
     const orderSummary = {
       items: orderItems,
-      sample: sampleData,
+      samples: orderSamples, // New samples array
+      sample: sampleData, // Keep legacy format for compatibility
+      regularSubtotal,
+      sampleSubtotal,
       subtotal,
       shipping,
       tax,
       total,
       shippingAddress,
       billingAddress,
-      paymentMethod: paymentMethod || 'cod'
+      paymentMethod: paymentMethod || 'cod',
+      freeThreshold,
+      isFreeEligible,
+      appliedSampleDiscount: isFreeEligible ? sampleSubtotal : 0
     };
     
     res.json({

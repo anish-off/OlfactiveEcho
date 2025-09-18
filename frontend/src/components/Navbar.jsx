@@ -14,7 +14,8 @@ import {
   Home,
   Store,
   Users,
-  Info
+  Info,
+  Brain
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -156,6 +157,18 @@ const Navbar = () => {
               >
                 <Package className="w-4 h-4 inline mr-2" />
                 Collections
+              </Link>
+              <Link 
+                to="/scent-matcher" 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  isActiveRoute('/scent-matcher') 
+                    ? 'bg-amber-100 text-amber-700' 
+                    : 'text-gray-700 hover:text-amber-600 hover:bg-amber-50'
+                }`}
+                onClick={closeAllDropdowns}
+              >
+                <Brain className="w-4 h-4 inline mr-2" />
+                Scent Matcher
               </Link>
               <Link 
                 to="/about" 
@@ -431,6 +444,18 @@ const Navbar = () => {
                 >
                   <Package className="w-5 h-5 mr-3" />
                   Collections
+                </Link>
+                <Link
+                  to="/scent-matcher"
+                  className={`flex items-center px-4 py-3 rounded-lg text-base font-medium transition-all duration-200 ${
+                    isActiveRoute('/scent-matcher') 
+                      ? 'bg-amber-100 text-amber-700' 
+                      : 'text-gray-700 hover:text-amber-600 hover:bg-amber-50'
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Brain className="w-5 h-5 mr-3" />
+                  Scent Matcher
                 </Link>
                 <Link
                   to="/about"

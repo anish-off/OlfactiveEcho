@@ -53,14 +53,14 @@ const ProductList = () => {
       </div>
 
       <motion.div
-        className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+        className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
         initial="hidden"
         animate="visible"
         variants={{
           hidden: { opacity: 0 },
           visible: {
             opacity: 1,
-            transition: { staggerChildren: 0.1, delayChildren: 0.2 },
+            transition: { staggerChildren: 0.1, delayChildren: 0.1 },
           },
         }}
       >
@@ -68,7 +68,7 @@ const ProductList = () => {
           <motion.div
             key={product._id}
             variants={{
-              hidden: { opacity: 0, y: 40 },
+              hidden: { opacity: 0, y: 20 },
               visible: { opacity: 1, y: 0 },
             }}
             transition={{ duration: 0.5 }}
@@ -77,7 +77,7 @@ const ProductList = () => {
           </motion.div>
         ))}
         {products.length === 0 && (
-          <div className="col-span-full text-center text-gray-500">
+          <div className="col-span-full text-center text-gray-500 py-12">
             No products found.
           </div>
         )}

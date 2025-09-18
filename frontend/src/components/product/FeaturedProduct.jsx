@@ -62,8 +62,46 @@ const FeaturedProduct = () => {
                 <motion.div className="mt-8 pt-8 border-t border-gray-200" initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ duration:0.6, delay:0.6 }}>
                   <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-4">Fragrance Notes</h4>
                   <div className="flex flex-wrap gap-3">
-                    {current.notes?.slice(0,6).map(n => <span key={n} className="text-sm font-medium bg-white text-gray-700 px-3 py-1.5 rounded-full shadow-sm">{n}</span>)}
+                    {(() => {
+                      // Handle both old and new note formats
+                      const getAllNotes = () => {
+                        if (!current.notes) return [];
+                        if (Array.isArray(current.notes)) return current.notes; // Legacy format
+                        
+                        // New nested format
+                        const allNotes = [];
+                        if (current.notes.top) allNotes.push(...current.notes.top);
+                        if (current.notes.middle) allNotes.push(...current.notes.middle);
+                        if (current.notes.base) allNotes.push(...current.notes.base);
+                        return allNotes;
+                      };
+                      
+                      return getAllNotes().slice(0,6).map(n => 
+                        <span key={n} className="text-sm font-medium bg-white text-gray-700 px-3 py-1.5 rounded-full shadow-sm">{n}</span>
+                      );
+                    })()}
                   </div>
+                  
+                  {/* Display scent family and intensity if available */}
+                  {(current.scentFamily || current.intensity) && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {current.scentFamily && (
+                        <span className="text-xs font-medium bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full capitalize">
+                          {current.scentFamily} Family
+                        </span>
+                      )}
+                      {current.intensity && (
+                        <span className="text-xs font-medium bg-green-100 text-green-700 px-3 py-1.5 rounded-full capitalize">
+                          {current.intensity} Intensity
+                        </span>
+                      )}
+                      {current.concentration && (
+                        <span className="text-xs font-medium bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full">
+                          {current.concentration}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </motion.div>
               </motion.div>
             </motion.div>

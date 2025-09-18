@@ -39,15 +39,50 @@ export const CartProvider = ({ children }) => {
     });
   };
 
+  const addSample = (sampleProduct, quantity = 1) => {
+    // Samples are treated as separate items even if same product
+    setItems(prev => [...prev, { 
+      id: sampleProduct._id, 
+      product: sampleProduct, 
+      quantity,
+      isSample: true 
+    }]);
+  };
+
   const removeItem = (id) => setItems(prev => prev.filter(i => i.id !== id));
   const updateQuantity = (id, quantity) => setItems(prev => prev.map(i => i.id === id ? { ...i, quantity: Math.max(1, quantity) } : i));
   const clearCart = () => setItems([]);
 
+  // Separate regular items and samples for calculations
+  const regularItems = items.filter(item => !item.isSample && !item.product?.isSample);
+  const sampleItems = items.filter(item => item.isSample || item.product?.isSample);
+
   const totalItems = items.reduce((s,i)=>s+i.quantity,0);
-  const subtotal = items.reduce((s,i)=>s + (i.product?.price||0)*i.quantity,0);
+  const subtotal = regularItems.reduce((s,i)=>s + (i.product?.price||0)*i.quantity,0);
+  const sampleTotal = sampleItems.reduce((s,i)=>s + (i.product?.price||0)*i.quantity,0);
+  const grandTotal = subtotal + sampleTotal;
+
+  // Check if eligible for free samples (₹5000 threshold)
+  const freeThreshold = 5000;
+  const isFreeEligible = subtotal >= freeThreshold;
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, totalItems, subtotal }}>
+    <CartContext.Provider value={{ 
+      items, 
+      addItem, 
+      addSample, 
+      removeItem, 
+      updateQuantity, 
+      clearCart, 
+      totalItems, 
+      subtotal, 
+      sampleTotal, 
+      grandTotal,
+      regularItems,
+      sampleItems,
+      isFreeEligible,
+      freeThreshold
+    }}>
       {children}
     </CartContext.Provider>
   );

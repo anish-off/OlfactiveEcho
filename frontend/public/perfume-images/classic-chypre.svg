@@ -1,0 +1,69 @@
+<svg width="300" height="400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bottleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF69B4;stop-opacity:0.7" />
+      <stop offset="50%" style="stop-color:#FF69B4;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#FF69B4;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="capGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E8E8E8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#B8B8B8;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="4" dy="4" stdDeviation="4" flood-opacity="0.3"/>
+    </filter>
+    <filter id="innerShadow">
+      <feOffset dx="0" dy="2"/>
+      <feGaussianBlur stdDeviation="2" result="offset-blur"/>
+      <feFlood flood-color="#000" flood-opacity="0.2"/>
+      <feComposite in2="offset-blur" operator="in"/>
+    </filter>
+  </defs>
+  
+  <!-- Bottle Body -->
+  <rect x="75" y="120" width="150" height="230" rx="20" ry="20" fill="url(#bottleGrad)" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+  
+  <!-- Liquid Level -->
+  <rect x="80" y="130" width="140" height="210" rx="15" ry="15" fill="#FF69B4" opacity="0.6"/>
+  
+  <!-- Bottle Neck -->
+  <rect x="120" y="80" width="60" height="50" fill="url(#bottleGrad)" stroke="#333" stroke-width="2"/>
+  
+  <!-- Bottle Cap -->
+  <rect x="110" y="55" width="80" height="35" rx="8" ry="8" fill="url(#capGrad)" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
+  
+  <!-- Cap Highlight -->
+  <rect x="115" y="60" width="70" height="8" rx="4" ry="4" fill="white" opacity="0.6"/>
+  
+  <!-- Main Label Background -->
+  <rect x="85" y="180" width="130" height="90" rx="8" ry="8" fill="white" opacity="0.95" stroke="#ddd" stroke-width="1"/>
+  
+  <!-- Brand Name -->
+  <text x="150" y="200" text-anchor="middle" font-family="Georgia, serif" font-size="11" font-weight="bold" fill="#2c2c2c">Olfactive</text>
+  <text x="150" y="213" text-anchor="middle" font-family="Georgia, serif" font-size="11" font-weight="bold" fill="#2c2c2c">Echo Vintage</text>
+  
+  <!-- Decorative Line -->
+  <line x1="95" y1="220" x2="205" y2="220" stroke="#ddd" stroke-width="1"/>
+  
+  <!-- Perfume Name -->
+  <text x="150" y="240" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="500" fill="#444">Classic Chypre</text>
+  
+  <!-- Family Icon -->
+  <text x="150" y="260" text-anchor="middle" font-size="18">�</text>
+  
+  <!-- Bottle Highlights -->
+  <ellipse cx="120" cy="160" rx="8" ry="15" fill="white" opacity="0.4"/>
+  <circle cx="130" cy="300" r="4" fill="white" opacity="0.3"/>
+  
+  <!-- Volume and Concentration -->
+  <text x="150" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="500" fill="#555">100ml EDP</text>
+  
+  <!-- Decorative Bottom Element -->
+  <rect x="140" y="330" width="20" height="2" fill="#ddd" opacity="0.8"/>
+  
+  <!-- Atomizer/Spray (if EDT/EDP) -->
+  
+  <rect x="145" y="48" width="10" height="12" fill="#C0C0C0" stroke="#999" stroke-width="1"/>
+  <circle cx="150" cy="45" r="2" fill="#666"/>
+  
+</svg>
