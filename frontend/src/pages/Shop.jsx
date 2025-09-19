@@ -7,42 +7,42 @@ const Shop = () => {
       name: 'Men\'s Fragrances', 
       count: 24, 
       image: '/assets/mens.jpg',
-      route: '/products/all?gender=men',
+      route: '/collections?gender=men',
       description: 'Bold and sophisticated scents for men'
     },
     { 
       name: 'Women\'s Fragrances', 
       count: 32, 
       image: '/assets/womens.jpg',
-      route: '/products/all?gender=women',
+      route: '/collections?gender=women',
       description: 'Elegant and captivating fragrances for women'
     },
     { 
       name: 'Unisex Fragrances', 
       count: 18, 
       image: '/assets/unisex.jpg',
-      route: '/products/all?gender=unisex',
+      route: '/collections?gender=unisex',
       description: 'Versatile scents for everyone'
     },
     { 
       name: 'Citrus Collection', 
       count: 15, 
       image: '/assets/citrus.jpg',
-      route: '/products/all?family=citrus',
+      route: '/collections?family=citrus',
       description: 'Fresh and energizing citrus fragrances'
     },
     { 
       name: 'Oriental Collection', 
       count: 12, 
       image: '/assets/oriental.jpg',
-      route: '/products/all?family=oriental',
+      route: '/collections?family=oriental',
       description: 'Rich and exotic oriental scents'
     },
     { 
       name: 'Floral Collection', 
       count: 20, 
       image: '/assets/floral.jpg',
-      route: '/products/all?family=floral',
+      route: '/collections?family=floral',
       description: 'Beautiful and romantic floral bouquets'
     },
   ];
@@ -100,7 +100,7 @@ const Shop = () => {
 
         <div className="text-center">
           <Link
-            to="/products"
+            to="/collections"
             className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 transition-colors"
           >
             View All Products

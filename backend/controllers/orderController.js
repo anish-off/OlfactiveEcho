@@ -1,6 +1,7 @@
 const Order = require('../models/Order');
 const Perfume = require('../models/Perfume');
 const User = require('../models/User');
+const mongoose = require('mongoose');
 const { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail } = require('../services/emailService');
 
 // Calculate shipping based on order value and location
@@ -119,13 +120,19 @@ exports.checkout = async (req, res) => {
     // Handle legacy sample format (for backward compatibility)
     let sampleData = {};
     if (sample && sample.samplePerfume) {
-      const samplePerfume = await Perfume.findById(sample.samplePerfume);
-      if (!samplePerfume) {
-        throw new Error('Sample perfume not found');
+      // Check if samplePerfume is a valid ObjectId
+      if (mongoose.Types.ObjectId.isValid(sample.samplePerfume)) {
+        const samplePerfume = await Perfume.findById(sample.samplePerfume);
+        if (!samplePerfume) {
+          throw new Error('Sample perfume not found');
+        }
+        sampleData.samplePerfume = sample.samplePerfume;
+        sampleData.price = isFreeEligible ? 0 : (sample.price || 5);
+      } else {
+        // Invalid ObjectId - skip sample for now but don't fail the order
+        console.warn('Invalid sample ObjectId provided:', sample.samplePerfume);
+        sampleData = {}; // Empty sample data
       }
-      sampleData.samplePerfume = sample.samplePerfume;
-      sampleData.price = isFreeEligible ? 0 : (sample.price || 5);
-      // Don't add to subtotal as it will be included in order summary separately
     }
     
     // Calculate shipping and tax
@@ -196,11 +203,26 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ message: 'Payment ID required for online payments' });
     }
     
+    // Validate and clean sample data before creating order
+    let cleanSampleData = {};
+    if (sample && sample.samplePerfume) {
+      if (mongoose.Types.ObjectId.isValid(sample.samplePerfume)) {
+        // Only include sample if it has a valid ObjectId
+        cleanSampleData = {
+          samplePerfume: sample.samplePerfume,
+          price: sample.price || 0
+        };
+      } else {
+        console.warn('⚠️ Invalid sample ObjectId provided, skipping sample:', sample.samplePerfume);
+        // Don't include invalid sample data
+      }
+    }
+    
     // Create order
     const order = await Order.create({ 
       user: req.user._id, 
       items, 
-      sample: sample || {}, 
+      sample: cleanSampleData,
       total,
       subtotal,
       shipping,

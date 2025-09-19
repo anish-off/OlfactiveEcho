@@ -66,3 +66,22 @@ debug-*.js
 # Cache
 .cache/
 .parcel-cache/
+
+# Temporary email files and testing artifacts
+backend/temp-emails/
+backend/scripts/test*.js
+backend/scripts/check*.js
+backend/scripts/debug*.js
+
+# Backup files
+*.backup
+*.bak
+*.orig
+
+# Documentation that might contain sensitive info
+*_SUMMARY.md
+*_SETUP.md
+
+# Local development artifacts
+*.local
+*.dev

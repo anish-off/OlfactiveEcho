@@ -1,45 +1,145 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import Footer from '@/components/Footer';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import ProductCard from '@/components/product/ProductCard';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Search, Filter, Grid, List, X } from 'lucide-react';
 import { listPerfumes } from '@/api/perfume';
-import { useWishlist } from '@/context/WishlistContext';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { useWishlist } from '@/context/WishlistContext';
+import { getImageWithFallbacks, getProxiedImageUrl } from '@/utils/imageUtils';
+import Footer from '@/components/Footer';
 
 const ProductsAll = () => {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const navigate = useNavigate();
   const { toggle: toggleWishlist, has } = useWishlist();
+
   const [perfumes, setPerfumes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('name');
+  const [viewMode, setViewMode] = useState('grid');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedGender, setSelectedGender] = useState('all');
+  const [selectedFragranceFamily, setSelectedFragranceFamily] = useState('all');
 
   // Get filter parameters from URL
   const genderFilter = searchParams.get('gender');
   const familyFilter = searchParams.get('family');
+  const brandFilter = searchParams.get('brand');
 
-  useEffect(()=>{
-    (async ()=>{
-      try{
+  // Utility function to clean perfume names by removing gender specifications
+  const cleanPerfumeName = (name) => {
+    if (!name) return '';
+    return name
+      .replace(/ for women and men$/i, '')
+      .replace(/ for women$/i, '')
+      .replace(/ for men$/i, '')
+      .replace(/ - Women$/i, '')
+      .replace(/ - Men$/i, '')
+      .replace(/ \(Women\)$/i, '')
+      .replace(/ \(Men\)$/i, '')
+      .trim();
+  };
+
+  // Load products on component mount
+  useEffect(() => {
+    const fetchPerfumes = async () => {
+      try {
         setLoading(true);
-        const data = await listPerfumes();
-        console.log('Fetched perfumes:', data.length, 'perfumes');
-        console.log('First perfume:', data[0]);
-        setPerfumes(data);
-      } catch(err){
+        setError('');
+        
+        // Fetch all products by setting a high limit
+        const data = await listPerfumes({ limit: 200 });
+        
+        // Handle both old array format and new object format for backward compatibility
+        const perfumesArray = Array.isArray(data) ? data : (data.perfumes || []);
+        
+        console.log('Fetched perfumes:', perfumesArray.length, 'perfumes');
+        console.log('First perfume:', perfumesArray[0]);
+        
+        setPerfumes(perfumesArray);
+      } catch (err) {
         console.error('Error fetching perfumes:', err);
         setError('Failed to load perfumes');
-      } finally { setLoading(false); }
-    })();
-  },[]);
+      } finally { 
+        setLoading(false); 
+      }
+    };
 
-  const categories = useMemo(()=>{
-    const counts = perfumes.reduce((acc,p)=>{ const c = p.category || 'uncategorized'; acc[c] = (acc[c]||0)+1; return acc; },{});
-    const list = Object.entries(counts).map(([id,count])=>({ id, name: id.charAt(0).toUpperCase()+id.slice(1), count }));
-    list.sort((a,b)=> b.count - a.count);
-    return [{ id:'all', name:'All Perfumes', count: perfumes.length }, ...list];
-  },[perfumes]);
+    fetchPerfumes();
+  }, []);
 
+  // Generate categories based on available perfumes
+  const categories = useMemo(() => {
+    const counts = perfumes.reduce((acc, p) => { 
+      const c = p.category || 'uncategorized'; 
+      acc[c] = (acc[c] || 0) + 1; 
+      return acc; 
+    }, {});
+    
+    const list = Object.entries(counts).map(([id, count]) => ({ 
+      id, 
+      name: id.charAt(0).toUpperCase() + id.slice(1), 
+      count 
+    }));
+    
+    list.sort((a, b) => b.count - a.count);
+    
+    return [{ id: 'all', name: 'All Perfumes', count: perfumes.length }, ...list];
+  }, [perfumes]);
+
+  // Generate genders based on available perfumes
+  const genders = useMemo(() => {
+    const counts = perfumes.reduce((acc, p) => { 
+      const g = p.gender || 'unisex'; 
+      acc[g] = (acc[g] || 0) + 1; 
+      return acc; 
+    }, {});
+    
+    const list = Object.entries(counts).map(([id, count]) => ({ 
+      id, 
+      name: id === 'male' ? 'Men' : id === 'female' ? 'Women' : 'Unisex', 
+      count 
+    }));
+    
+    list.sort((a, b) => b.count - a.count);
+    
+    return [{ id: 'all', name: 'All Genders', count: perfumes.length }, ...list];
+  }, [perfumes]);
+
+  // Generate fragrance families based on main accords
+  const fragranceFamilies = useMemo(() => {
+    const commonFamilies = ['citrus', 'floral', 'oriental', 'woody', 'fresh', 'vanilla', 'fruity', 'spicy', 'aromatic', 'green'];
+    const counts = {};
+    
+    perfumes.forEach(p => {
+      if (p.main_accords && Array.isArray(p.main_accords)) {
+        p.main_accords.forEach(accord => {
+          const name = accord.name?.toLowerCase();
+          if (commonFamilies.includes(name)) {
+            counts[name] = (counts[name] || 0) + 1;
+          }
+        });
+      }
+    });
+    
+    const list = Object.entries(counts).map(([id, count]) => ({ 
+      id, 
+      name: id.charAt(0).toUpperCase() + id.slice(1), 
+      count 
+    }));
+    
+    list.sort((a, b) => b.count - a.count);
+    
+    return [{ id: 'all', name: 'All Families', count: perfumes.length }, ...list];
+  }, [perfumes]);
+
+  // Filter perfumes based on URL parameters and local filters
   const filteredPerfumes = useMemo(() => {
     let filtered = perfumes;
 
@@ -49,7 +149,14 @@ const ProductsAll = () => {
     }
     
     if (familyFilter) {
-      filtered = filtered.filter(p => p.scentFamily === familyFilter);
+      filtered = filtered.filter(p => p.scentFamily?.toLowerCase() === familyFilter.toLowerCase());
+    }
+
+    if (brandFilter) {
+      filtered = filtered.filter(p => {
+        const brandName = typeof p.brand === 'object' ? p.brand?.name : p.brand;
+        return brandName?.toLowerCase().includes(brandFilter.toLowerCase());
+      });
     }
 
     // Then apply category filter if not 'all'
@@ -57,8 +164,51 @@ const ProductsAll = () => {
       filtered = filtered.filter(p => p.category === selectedCategory);
     }
 
+    // Apply gender filter if not 'all'
+    if (selectedGender !== 'all') {
+      filtered = filtered.filter(p => p.gender === selectedGender);
+    }
+
+    // Apply fragrance family filter if not 'all'
+    if (selectedFragranceFamily !== 'all') {
+      filtered = filtered.filter(p => {
+        if (!p.main_accords || !Array.isArray(p.main_accords)) return false;
+        return p.main_accords.some(accord => accord.name?.toLowerCase() === selectedFragranceFamily.toLowerCase());
+      });
+    }
+
+    // Apply search term filter
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(p => {
+        const name = cleanPerfumeName(p.name)?.toLowerCase() || '';
+        const brand = typeof p.brand === 'object' ? p.brand?.name?.toLowerCase() : p.brand?.toLowerCase() || '';
+        return name.includes(term) || brand.includes(term);
+      });
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name?.localeCompare(b.name) || 0;
+        case '-name':
+          return b.name?.localeCompare(a.name) || 0;
+        case 'price':
+          return (a.price || 0) - (b.price || 0);
+        case '-price':
+          return (b.price || 0) - (a.price || 0);
+        case '-createdAt':
+          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+        case 'createdAt':
+          return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+        default:
+          return 0;
+      }
+    });
+
     return filtered;
-  }, [perfumes, selectedCategory, genderFilter, familyFilter]);
+  }, [perfumes, selectedCategory, selectedGender, selectedFragranceFamily, genderFilter, familyFilter, brandFilter, searchTerm, sortBy]);
 
   // Update page title based on filters
   const getPageTitle = () => {
@@ -68,15 +218,17 @@ const ProductsAll = () => {
       return `${genderFilter.charAt(0).toUpperCase() + genderFilter.slice(1)}'s Fragrances`;
     } else if (familyFilter) {
       return `${familyFilter.charAt(0).toUpperCase() + familyFilter.slice(1)} Collection`;
+    } else if (brandFilter) {
+      return `${brandFilter} Fragrances`;
     }
-    return 'Discover Your Signature Scent';
+    return 'All Fragrances';
   };
 
   const getPageSubtitle = () => {
-    if (genderFilter || familyFilter) {
+    if (genderFilter || familyFilter || brandFilter) {
       return `Explore our curated selection of ${filteredPerfumes.length} premium fragrances`;
     }
-    return 'Explore our curated collection of premium perfumes from the world\'s most prestigious brands';
+    return 'Explore our complete collection of premium perfumes from the world\'s most prestigious brands';
   };
 
   const handleProductClick = perfume => {
@@ -90,6 +242,21 @@ const ProductsAll = () => {
     toast.success(already ? 'Removed from wishlist' : 'Added to wishlist');
   };
 
+  const handleSearch = (e) => {
+    if (e.key === 'Enter') {
+      // Search is automatically applied via useMemo
+    }
+  };
+
+  const clearAllFilters = () => {
+    setSelectedCategory('all');
+    setSelectedGender('all');
+    setSelectedFragranceFamily('all');
+    setSearchTerm('');
+  };
+
+  const hasActiveFilters = selectedCategory !== 'all' || selectedGender !== 'all' || selectedFragranceFamily !== 'all' || searchTerm.trim() !== '';
+
   return (
     <>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16">
@@ -97,8 +264,8 @@ const ProductsAll = () => {
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
             {getPageTitle()}
-            {!genderFilter && !familyFilter && (
-              <span className="bg-gradient-to-r from-[#D9A036] to-[#BF7C2A] bg-clip-text text-transparent"> Signature Scent</span>
+            {!genderFilter && !familyFilter && !brandFilter && (
+              <span className="bg-gradient-to-r from-[#D9A036] to-[#BF7C2A] bg-clip-text text-transparent"> Collection</span>
             )}
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
@@ -106,7 +273,7 @@ const ProductsAll = () => {
           </p>
           
           {/* Show filter indicator if filters are applied */}
-          {(genderFilter || familyFilter) && (
+          {(genderFilter || familyFilter || brandFilter) && (
             <div className="mt-4 flex justify-center">
               <div className="inline-flex items-center px-4 py-2 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,21 +285,163 @@ const ProductsAll = () => {
           )}
         </div>
 
-        {/* Category Filter */}
-        <div className="flex flex-wrap justify-center gap-4 mb-12">
-          {categories.map(category => (
-            <button
-              key={category.id}
-              onClick={() => setSelectedCategory(category.id)}
-              className={`px-6 py-3 rounded-full font-medium transition-all duration-300 ${
-                selectedCategory === category.id
-                  ? 'bg-gradient-to-r from-[#D9A036] to-[#BF7C2A] text-white shadow-lg transform scale-105'
-                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 hover:border-[#D9A036]'
-              }`}
-            >
-              {category.name} ({category.count})
-            </button>
-          ))}
+        {/* Modern Filter Section */}
+        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6">
+            <div className="flex items-center gap-3 mb-4 lg:mb-0">
+              <Filter className="h-5 w-5 text-amber-600" />
+              <h3 className="text-lg font-semibold text-gray-900">Filter & Search</h3>
+              {hasActiveFilters && (
+                <span className="bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                  {filteredPerfumes.length} results
+                </span>
+              )}
+            </div>
+            {hasActiveFilters && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={clearAllFilters}
+                className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+              >
+                <X className="h-4 w-4" />
+                Clear all filters
+              </Button>
+            )}
+          </div>
+
+          {/* Search Bar */}
+          <div className="mb-6">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <Input
+                type="text"
+                placeholder="Search fragrances by name or brand..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={handleSearch}
+                className="pl-12 pr-4 py-3 text-lg border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          {/* Filter Pills */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Gender Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">Gender</label>
+              <div className="flex flex-wrap gap-2">
+                {genders.map(gender => (
+                  <button
+                    key={gender.id}
+                    onClick={() => setSelectedGender(gender.id)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      selectedGender === gender.id
+                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md transform scale-105'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-sm'
+                    }`}
+                  >
+                    {gender.name}
+                    <span className="ml-1 text-xs opacity-75">({gender.count})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Fragrance Family Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">Fragrance Family</label>
+              <div className="flex flex-wrap gap-2">
+                {fragranceFamilies.slice(0, 6).map(family => (
+                  <button
+                    key={family.id}
+                    onClick={() => setSelectedFragranceFamily(family.id)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      selectedFragranceFamily === family.id
+                        ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md transform scale-105'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-sm'
+                    }`}
+                  >
+                    {family.name}
+                    <span className="ml-1 text-xs opacity-75">({family.count})</span>
+                  </button>
+                ))}
+              </div>
+              {fragranceFamilies.length > 7 && (
+                <div className="mt-2 text-xs text-gray-500">
+                  +{fragranceFamilies.length - 6} more families available
+                </div>
+              )}
+            </div>
+
+            {/* Category Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">Category</label>
+              <div className="flex flex-wrap gap-2">
+                {categories.slice(0, 4).map(category => (
+                  <button
+                    key={category.id}
+                    onClick={() => setSelectedCategory(category.id)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      selectedCategory === category.id
+                        ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md transform scale-105'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-sm'
+                    }`}
+                  >
+                    {category.name}
+                    <span className="ml-1 text-xs opacity-75">({category.count})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sort and View Controls */}
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-8">
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-gray-700">
+                Showing {filteredPerfumes.length} of {perfumes.length} fragrances
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">Name A-Z</SelectItem>
+                  <SelectItem value="-name">Name Z-A</SelectItem>
+                  <SelectItem value="price">Price Low-High</SelectItem>
+                  <SelectItem value="-price">Price High-Low</SelectItem>
+                  <SelectItem value="-createdAt">Newest First</SelectItem>
+                  <SelectItem value="createdAt">Oldest First</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* View Mode Toggle */}
+              <div className="flex rounded-lg border border-gray-200">
+                <Button
+                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('grid')}
+                  className="rounded-r-none"
+                >
+                  <Grid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className="rounded-l-none"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Status */}
@@ -140,75 +449,97 @@ const ProductsAll = () => {
         {error && !loading && <div className="text-center py-8 text-red-500">{error}</div>}
 
         {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {!loading && !error && filteredPerfumes.map(perfume => (
-            <div
-              key={perfume._id}
-              onClick={() => handleProductClick(perfume)}
-              className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer transform hover:scale-105"
-            >
-              <div className="relative overflow-hidden bg-gradient-to-br from-[#F2D785] to-[#F2C84B]">
-                <img
-                  src={perfume.image_url || 'https://fimgs.net/mdimg/perfume-thumbs/375x500.11209.jpg'}
-                  alt={perfume.name}
-                  className="w-full h-64 object-contain p-4 group-hover:scale-110 transition-transform duration-300"
-                  onError={e => {
-                    e.target.src = `/perfume-images/default-perfume.svg`;
-                  }}
-                />
-                <button
-                  onClick={(e) => toggleFavorite(e, perfume._id)}
-                  aria-label={has(perfume._id) ? 'Remove from wishlist' : 'Add to wishlist'}
-                  className={`inline-flex items-center justify-center h-10 w-10 absolute top-4 right-4 z-10 rounded-full backdrop-blur-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 bg-white/30 hover:bg-white/40 ${has(perfume._id) ? 'text-red-500' : 'text-white'}`}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill={has(perfume._id) ? 'currentColor' : 'none'}
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-5 w-5"
+        {!loading && !error && (
+          <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8' : 'space-y-4'}>
+            {filteredPerfumes.map(perfume => (
+              <motion.div
+                key={perfume._id}
+                onClick={() => handleProductClick(perfume)}
+                className={`bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer transform hover:scale-105 ${
+                  viewMode === 'list' ? 'flex flex-row' : ''
+                }`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className={`relative overflow-hidden bg-white ${viewMode === 'list' ? 'w-1/3' : ''}`}>
+                  <img
+                    src={getProxiedImageUrl(getImageWithFallbacks(perfume))}
+                    alt={cleanPerfumeName(perfume.name)}
+                    className={`object-contain p-6 group-hover:scale-110 transition-transform duration-300 ${
+                      viewMode === 'list' ? 'w-full h-40' : 'w-full h-64'
+                    }`}
+                    onError={e => {
+                      // Try fallback without proxy if proxy fails
+                      if (!e.target.src.includes('default-perfume.svg')) {
+                        e.target.src = '/perfume-images/default-perfume.svg';
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={(e) => toggleFavorite(e, perfume._id)}
+                    aria-label={has(perfume._id) ? 'Remove from wishlist' : 'Add to wishlist'}
+                    className={`inline-flex items-center justify-center h-10 w-10 absolute top-4 right-4 z-10 rounded-full backdrop-blur-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 bg-white/30 hover:bg-white/40 ${has(perfume._id) ? 'text-red-500' : 'text-white'}`}
                   >
-                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-[#8C501B] bg-yellow-100 px-2 py-1 rounded-full uppercase tracking-wide">
-                    {perfume.category}
-                  </span>
-                  <div className="flex items-center space-x-1">
-                    {perfume.samplesAvailable !== false && (
-                      <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
-                        Sample Available
-                      </span>
-                    )}
-                  </div>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill={has(perfume._id) ? 'currentColor' : 'none'}
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-5 w-5"
+                    >
+                      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                    </svg>
+                  </button>
                 </div>
 
-                <h3 className="font-bold text-lg text-gray-900 mb-1 group-hover:text-[#BF7C2A] transition-colors">
-                  {perfume.name}
-                </h3>
-                <p className="text-gray-600 text-sm mb-3">{(typeof perfume.brand === 'object' ? perfume.brand?.name : perfume.brand) || 'Olfactive Echo'}</p>
-
-                <p className="text-gray-700 text-sm mb-4 line-clamp-2">
-                  {perfume.description}
-                </p>
-
-                <div className="flex items-center justify-between">
-                  <div />
-                  <div className="flex items-center space-x-2">
-                    <span className="text-2xl font-bold text-gray-900">₹{perfume.price}</span>
+                <div className={`p-6 ${viewMode === 'list' ? 'flex-1' : ''}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-[#8C501B] bg-yellow-100 px-2 py-1 rounded-full uppercase tracking-wide">
+                      {perfume.category}
+                    </span>
+                    <div className="flex items-center space-x-1">
+                      {perfume.samplesAvailable !== false && (
+                        <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                          Sample Available
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <h3 className="font-bold text-lg text-gray-900 mb-1 group-hover:text-[#BF7C2A] transition-colors">
+                    {cleanPerfumeName(perfume.name)}
+                  </h3>
+                  <p className="text-gray-600 text-sm mb-3">{(typeof perfume.brand === 'object' ? perfume.brand?.name : perfume.brand) || 'Olfactive Echo'}</p>
+                  <p className="text-gray-700 text-sm mb-4 line-clamp-2">
+                    {perfume.description}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <div />
+                    <div className="flex items-center space-x-2">
+                      <span className="text-2xl font-bold text-gray-900">₹{perfume.price}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+
+        {/* No Products */}
+        {!loading && !error && filteredPerfumes.length === 0 && (
+          <div className="text-center py-12">
+            <div className="text-gray-500 mb-4">
+              <Filter className="h-16 w-16 mx-auto opacity-50" />
             </div>
-          ))}
-        </div>
+            <h3 className="text-xl font-medium text-gray-900 mb-2">No fragrances found</h3>
+            <p className="text-gray-600">
+              Try adjusting your search or filter criteria
+            </p>
+          </div>
+        )}
 
         {/* CTA Section */}
         <div className="mt-20 bg-gradient-to-r from-[#D9A036] to-[#BF7C2A] rounded-3xl p-12 text-center text-white">

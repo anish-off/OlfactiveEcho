@@ -5,6 +5,7 @@ import { ShoppingCart, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-reac
 import ScrollAnimationWrapper from "@/components/ui/ScrollAnimationWrapper";
 import { listPerfumes } from '@/api/perfume';
 import { useCart } from '@/context/CartContext';
+import { getImageWithFallbacks, getProxiedImageUrl } from '@/utils/imageUtils';
 
 const FeaturedProduct = () => {
   const { addItem } = useCart();
@@ -14,7 +15,8 @@ const FeaturedProduct = () => {
   useEffect(()=>{
     (async () => {
       try {
-        const perfumes = await listPerfumes();
+        const data = await listPerfumes({ limit: 50 });
+        const perfumes = Array.isArray(data) ? data : (data.perfumes || []);
         const sorted = [...perfumes].sort((a,b)=> b.price - a.price);
         setFeatured(sorted.slice(0,5));
       } catch {
@@ -47,7 +49,19 @@ const FeaturedProduct = () => {
               className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center min-h-[600px] overflow-hidden"
             >
               <motion.div className="order-2 lg:order-1 min-h-[400px] flex items-center justify-center" initial={{ opacity:0, x:-40 }} animate={{ opacity:1,x:0 }} transition={{ duration:0.8 }}>
-                <img src={current.imageUrl || 'https://via.placeholder.com/600x800?text=Fragrance'} alt={current.name} className="rounded-xl shadow-xl w-full h-auto object-cover max-h-[600px]" />
+                <img 
+                  src={getProxiedImageUrl(getImageWithFallbacks({ 
+                    image_url: current.image_url, 
+                    imageUrl: current.imageUrl, 
+                    image: current.image, 
+                    name: current.name 
+                  }))} 
+                  alt={current.name} 
+                  className="rounded-xl shadow-xl w-full h-auto object-cover max-h-[600px]"
+                  onError={(e) => {
+                    e.target.src = '/fragrance_images/Unknown.jpg';
+                  }}
+                />
               </motion.div>
               <motion.div className="order-1 lg:order-2 px-4 sm:px-8" initial={{ opacity:0,x:40 }} animate={{ opacity:1,x:0 }} transition={{ duration:0.8, delay:0.2 }}>
                 <h2 className="text-sm font-semibold text-primary uppercase tracking-widest mb-3">Featured</h2>

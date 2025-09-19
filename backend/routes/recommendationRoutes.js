@@ -2,12 +2,24 @@ const express = require('express');
 const router = express.Router();
 const { 
   getPersonalityRecommendations, 
-  getHistoryBasedRecommendations 
+  getOccasionRecommendations,
+  getSeasonalRecommendations,
+  getHistoryBasedRecommendations,
+  getAIStatus
 } = require('../controllers/recommendationController');
 const { auth } = require('../middleware/authMiddleware');
 
-// Get personality-based recommendations
+// Get personality-based recommendations (AI-powered)
 router.post('/personality', getPersonalityRecommendations);
+
+// Get occasion-based recommendations (AI-powered)
+router.post('/occasion', getOccasionRecommendations);
+
+// Get seasonal recommendations (AI-powered)
+router.post('/seasonal', getSeasonalRecommendations);
+
+// Get AI service status
+router.get('/ai-status', getAIStatus);
 
 // Get recommendations based on user's purchase history (requires auth)
 router.get('/history/:userId', auth, getHistoryBasedRecommendations);

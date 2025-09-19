@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Calendar, MapPin, Clock, Users, Thermometer, Sparkles } from 'lucide-react';
+import { getOccasionRecommendations } from '../../api/recommendations';
 
 const OccasionRecommender = ({ onRecommendation }) => {
   const [selectedOccasion, setSelectedOccasion] = useState(null);
@@ -226,118 +227,115 @@ const OccasionRecommender = ({ onRecommendation }) => {
     }
   ];
 
-  const generateRecommendation = () => {
+  const generateRecommendation = async () => {
     if (!selectedOccasion) return;
 
-    const baseProfile = selectedOccasion.scentProfile;
-    let adjustedProfile = { ...baseProfile };
+    try {
+      // Prepare data for API call
+      const occasionData = {
+        occasion: selectedOccasion.title,
+        occasionId: selectedOccasion.id,
+        description: selectedOccasion.description,
+        timeOfDay: selectedTime?.title || 'any',
+        season: selectedSeason?.title || 'any',
+        company: selectedCompany?.title || 'solo',
+        scentProfile: selectedOccasion.scentProfile
+      };
 
-    // Adjust based on time of day
-    if (selectedTime) {
-      const timeAdjustment = selectedTime.scentAdjustment;
-      adjustedProfile.timeConsiderations = timeAdjustment;
-      
-      // Modify intensity based on time
-      if (selectedTime.id === 'morning') {
-        adjustedProfile.intensity = 'light-moderate';
-      } else if (selectedTime.id === 'evening' || selectedTime.id === 'night') {
-        adjustedProfile.intensity = adjustedProfile.intensity === 'light' ? 'moderate' : 'moderate-strong';
+      // Call the AI-powered occasion recommendations API
+      const apiResponse = await getOccasionRecommendations(occasionData);
+
+      if (apiResponse.success) {
+        const result = {
+          occasion: selectedOccasion,
+          timeOfDay: selectedTime,
+          season: selectedSeason,
+          company: selectedCompany,
+          recommendations: apiResponse.data.recommendations,
+          confidence: apiResponse.data.confidence || calculateConfidence(),
+          source: 'api',
+          metadata: apiResponse.data.metadata
+        };
+
+        onRecommendation(result);
+      } else {
+        // Fallback to local recommendations if API fails
+        const result = {
+          occasion: selectedOccasion,
+          timeOfDay: selectedTime,
+          season: selectedSeason,
+          company: selectedCompany,
+          recommendations: generateFallbackRecommendations(),
+          confidence: calculateConfidence(),
+          source: 'local'
+        };
+
+        onRecommendation(result);
       }
-    }
-
-    // Adjust based on season
-    if (selectedSeason) {
-      const seasonAdjustment = selectedSeason.scentAdjustment;
-      adjustedProfile.seasonalNotes = seasonAdjustment.notes;
-      adjustedProfile.seasonalAvoid = seasonAdjustment.avoid;
+    } catch (error) {
+      console.error('Failed to get occasion recommendations:', error);
       
-      // Season-specific family preferences
-      if (selectedSeason.id === 'summer') {
-        adjustedProfile.families = adjustedProfile.families.filter(f => 
-          !['heavy oriental', 'gourmand'].includes(f)
-        );
-        if (!adjustedProfile.families.includes('fresh')) {
-          adjustedProfile.families.unshift('fresh');
-        }
-      } else if (selectedSeason.id === 'winter') {
-        adjustedProfile.families = adjustedProfile.families.filter(f => 
-          f !== 'fresh'
-        );
-        if (!adjustedProfile.families.includes('oriental')) {
-          adjustedProfile.families.push('oriental');
-        }
-      }
+      // Fallback to local recommendations
+      const result = {
+        occasion: selectedOccasion,
+        timeOfDay: selectedTime,
+        season: selectedSeason,
+        company: selectedCompany,
+        recommendations: generateFallbackRecommendations(),
+        confidence: calculateConfidence(),
+        source: 'local'
+      };
+
+      onRecommendation(result);
     }
-
-    // Adjust based on company
-    if (selectedCompany) {
-      const companyAdjustment = selectedCompany.scentAdjustment;
-      adjustedProfile.companyConsiderations = companyAdjustment;
-      
-      if (selectedCompany.id === 'colleagues') {
-        adjustedProfile.intensity = 'light-moderate';
-      } else if (selectedCompany.id === 'partner') {
-        // Enhance romantic/sensual aspects
-        if (!adjustedProfile.families.includes('floral') && selectedOccasion.id === 'date') {
-          adjustedProfile.families.unshift('floral');
-        }
-      }
-    }
-
-    // Generate specific fragrance recommendations
-    const recommendations = generateSpecificRecommendations(adjustedProfile);
-
-    const result = {
-      occasion: selectedOccasion,
-      timeOfDay: selectedTime,
-      season: selectedSeason,
-      company: selectedCompany,
-      adjustedProfile,
-      recommendations,
-      confidence: calculateConfidence()
-    };
-
-    console.log('OccasionRecommender generating:', result); // Debug log
-    onRecommendation(result);
   };
 
-  const generateSpecificRecommendations = (profile) => {
-    // This would typically integrate with your perfume database
-    // For now, we'll generate example recommendations based on the profile
+  const generateFallbackRecommendations = () => {
+    // Fallback static recommendations if API fails
+    const baseProfile = selectedOccasion.scentProfile;
     
     const exampleRecommendations = [
       {
-        id: 1,
+        id: 'fallback_1',
         name: "Azure Breeze",
         brand: "Olfactive Echo",
-        family: profile.families[0],
-        intensity: profile.intensity,
-        notes: profile.notes.slice(0, 3),
+        family: baseProfile.families[0],
+        intensity: baseProfile.intensity,
+        notes: baseProfile.notes.slice(0, 3),
         description: `Perfect for ${selectedOccasion.title.toLowerCase()}`,
         matchScore: 95,
-        price: 2500
+        score: 95,
+        matchPercentage: 95,
+        price: 2500,
+        source: 'fallback'
       },
       {
-        id: 2,
+        id: 'fallback_2',
         name: "Golden Hour",
         brand: "Olfactive Echo", 
-        family: profile.families[1] || profile.families[0],
-        intensity: profile.intensity,
-        notes: profile.notes.slice(1, 4),
+        family: baseProfile.families[1] || baseProfile.families[0],
+        intensity: baseProfile.intensity,
+        notes: baseProfile.notes.slice(1, 4),
         description: `Ideal for your selected occasion and time`,
         matchScore: 88,
-        price: 3200
+        score: 88,
+        matchPercentage: 88,
+        price: 3200,
+        source: 'fallback'
       },
       {
-        id: 3,
+        id: 'fallback_3',
         name: "Mystic Bloom",
         brand: "Olfactive Echo",
-        family: profile.families[2] || profile.families[0],
-        intensity: profile.intensity,
-        notes: profile.notes.slice(2, 5),
+        family: baseProfile.families[2] || baseProfile.families[0],
+        intensity: baseProfile.intensity,
+        notes: baseProfile.notes.slice(2, 5),
         description: `A sophisticated choice for the setting`,
         matchScore: 82,
-        price: 2800
+        score: 82,
+        matchPercentage: 82,
+        price: 2800,
+        source: 'fallback'
       }
     ];
 

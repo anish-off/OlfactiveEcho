@@ -62,7 +62,7 @@ const OrderReview = ({
               />
               <div className="flex-1">
                 <h4 className="font-medium text-gray-900">{item.product.name}</h4>
-                <p className="text-sm text-gray-600">{item.product.brand}</p>
+                <p className="text-sm text-gray-600">{item.product.brand?.name || item.product.brand || 'Unknown Brand'}</p>
                 <div className="flex items-center mt-1">
                   <span className="text-sm text-gray-600">Quantity: {item.quantity}</span>
                   <span className="mx-2 text-gray-400">•</span>

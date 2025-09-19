@@ -5,13 +5,6 @@ const morgan = require('morgan');
 const connectDB = require('./config/db');
 const path = require('path');
 
-// Debug: log presence of env var (remove in production)
-if (!process.env.MONGO_URI) {
-  console.warn('DEBUG: MONGO_URI undefined at startup');
-} else {
-  console.log('DEBUG: MONGO_URI loaded');
-}
-
 const authRoutes = require('./routes/authRoutes');
 const perfumeRoutes = require('./routes/perfumeRoutes');
 const orderRoutes = require('./routes/orderRoutes');
@@ -23,12 +16,61 @@ const recommendationRoutes = require('./routes/recommendationRoutes');
 const app = express();
 
 // Middleware
-app.use(cors({ origin: process.env.CORS_ORIGIN?.split(',') || '*', credentials: true }));
+app.use(cors({ 
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:5174', 
+    'http://localhost:5175',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
+    'http://127.0.0.1:5175'
+  ], 
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use(morgan('dev'));
 
-// Serve /uploads statically for avatar access
+// Serve static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/images', express.static(path.join(__dirname, '..', 'frontend', 'public', 'perfume-images')));
+app.use('/fragrance-images', express.static(path.join(__dirname, '..', 'frontend', 'fragrance_images')));
+
+// API to proxy external images (for Fragrantica images)
+app.get('/api/proxy-image', async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (!url) {
+      return res.status(400).json({ message: 'URL parameter is required' });
+    }
+    
+    // Basic security check
+    if (!url.startsWith('https://fimgs.net/')) {
+      return res.status(403).json({ message: 'Only Fragrantica images are allowed' });
+    }
+    
+    const fetch = (await import('node-fetch')).default;
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      return res.status(404).json({ message: 'Image not found' });
+    }
+    
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.startsWith('image/')) {
+      return res.status(400).json({ message: 'Invalid image format' });
+    }
+    
+    res.set('Content-Type', contentType);
+    res.set('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+    
+    response.body.pipe(res);
+  } catch (error) {
+    console.error('Image proxy error:', error);
+    res.status(500).json({ message: 'Failed to fetch image' });
+  }
+});
 
 // Routes
 app.use('/api/auth', authRoutes);

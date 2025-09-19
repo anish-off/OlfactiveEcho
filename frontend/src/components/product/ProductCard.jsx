@@ -1,10 +1,12 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import toast from 'react-hot-toast';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Heart, ShoppingCart, HeartOff, Star, Package } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
+import { getImageWithFallbacks, getProxiedImageUrl } from '@/utils/imageUtils';
 
 const ProductCard = ({ 
   _id, 
@@ -14,6 +16,7 @@ const ProductCard = ({
   description, 
   price, 
   imageUrl, 
+  image_url, 
   image, 
   notes, 
   scentFamily,
@@ -27,6 +30,7 @@ const ProductCard = ({
 }) => {
   const { addItem } = useCart();
   const { toggle, has, hydrated } = useWishlist();
+  const navigate = useNavigate();
   const pid = _id || id;
   const wished = has(pid);
 
@@ -35,26 +39,39 @@ const ProductCard = ({
     if (!notes) return [];
     if (Array.isArray(notes)) return notes; // Legacy format
     
-    // New nested format
+    // New nested format with names from objects
     const allNotes = [];
-    if (notes.top) allNotes.push(...notes.top);
-    if (notes.middle) allNotes.push(...notes.middle);
-    if (notes.base) allNotes.push(...notes.base);
+    if (notes["Top Notes"]) allNotes.push(...notes["Top Notes"].map(n => n.name || n));
+    if (notes["Middle Notes"]) allNotes.push(...notes["Middle Notes"].map(n => n.name || n));
+    if (notes["Base Notes"]) allNotes.push(...notes["Base Notes"].map(n => n.name || n));
+    if (notes["General Notes"]) allNotes.push(...notes["General Notes"].map(n => n.name || n));
+    
+    // Fallback to legacy nested format
+    if (allNotes.length === 0) {
+      if (notes.top) allNotes.push(...notes.top);
+      if (notes.middle) allNotes.push(...notes.middle);
+      if (notes.base) allNotes.push(...notes.base);
+    }
+    
     return allNotes;
   };
 
   const displayNotes = getAllNotes();
-  const displayImage = imageUrl || image || `/perfume-images/${name?.toLowerCase().replace(/\s+/g, '-')}.svg`;
+  const displayImage = getProxiedImageUrl(getImageWithFallbacks({ image_url, imageUrl, image, name }));
+  const displayBrand = typeof brand === 'object' ? brand?.name : brand;
 
   return (
-    <Card className="group relative flex flex-col overflow-hidden rounded-xl border border-gray-100 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+    <Card 
+      className="group relative flex flex-col overflow-hidden rounded-xl border border-gray-100 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer"
+      onClick={() => navigate(`/product/${pid}`)}
+    >
       <div className="relative aspect-square overflow-hidden">
         <img
           src={displayImage}
           alt={name}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           onError={(e) => {
-            e.target.src = '/perfume-images/default-perfume.svg';
+            e.target.src = '/fragrance_images/Unknown.jpg';
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
@@ -84,7 +101,12 @@ const ProductCard = ({
           type="button"
           variant={wished?"default":"ghost"}
           disabled={!hydrated}
-          onClick={(e)=>{ e.preventDefault(); toggle(pid); toast.success(wished? 'Removed from wishlist':'Added to wishlist'); }}
+          onClick={(e)=>{ 
+            e.preventDefault(); 
+            e.stopPropagation(); 
+            toggle(pid); 
+            toast.success(wished? 'Removed from wishlist':'Added to wishlist'); 
+          }}
           className={`absolute top-2 right-2 z-10 rounded-full backdrop-blur-sm transition-colors duration-300 ${wished? 'bg-red-500 text-white hover:bg-red-600':'bg-white/30 text-white hover:bg-white/40'}`}
         >
           {wished ? <HeartOff className="h-5 w-5" /> : <Heart className="h-5 w-5" />}
@@ -94,8 +116,8 @@ const ProductCard = ({
       <CardHeader className="p-4 flex-grow">
         <div className="mb-2">
           <CardTitle className="text-lg font-bold text-gray-900 line-clamp-1">{name}</CardTitle>
-          {brand && (
-            <p className="text-sm text-gray-600 mt-1">{brand}</p>
+          {displayBrand && (
+            <p className="text-sm text-gray-600 mt-1">{displayBrand}</p>
           )}
         </div>
 
@@ -160,11 +182,12 @@ const ProductCard = ({
             size="sm"
             type="button"
             disabled={stock <= 0}
-            onClick={()=>{ 
+            onClick={(e)=>{ 
+              e.stopPropagation();
               addItem({ 
                 _id: pid, 
                 name, 
-                brand,
+                brand: displayBrand,
                 price, 
                 imageUrl: displayImage, 
                 notes: displayNotes, 
@@ -186,9 +209,10 @@ const ProductCard = ({
               variant="outline"
               size="sm"
               type="button"
-              onClick={() => {
-                // Navigate to sample or product detail page
-                window.location.href = `/product/${pid}`;
+              onClick={(e) => {
+                e.stopPropagation();
+                // Navigate to product detail page using React Router
+                navigate(`/product/${pid}`);
               }}
               className="rounded-full"
             >

@@ -2,14 +2,15 @@
 const Order = require('../models/Order');
 const fs = require('fs').promises;
 const path = require('path');
-const perfumesFilePath = path.join(__dirname, '..', 'combined_perfumes.json');
+const geminiService = require('../services/geminiService');
+const perfumesFilePath = path.join(__dirname, '..', 'data', 'combined_perfumes.json');
 
 async function readPerfumes() {
   const data = await fs.readFile(perfumesFilePath, 'utf8');
   return JSON.parse(data);
 }
 
-// Enhanced recommendation controller with real perfume data
+// Enhanced recommendation controller with real perfume data and AI integration
 exports.getPersonalityRecommendations = async (req, res) => {
   try {
     const { 
@@ -20,45 +21,244 @@ exports.getPersonalityRecommendations = async (req, res) => {
       userId 
     } = req.body;
 
+    // Validate required fields
+    if (!topFamilies || !Array.isArray(topFamilies) || topFamilies.length === 0) {
+      return res.status(400).json({ 
+        message: 'topFamilies is required and must be a non-empty array' 
+      });
+    }
+
     // Get user's purchase history for personalization
     const userHistory = userId ? await Order.find({ 
       user: userId, 
       status: 'delivered' 
     }).populate('items.perfume') : null;
 
-
-    // Fetch real perfumes from JSON file with scent family mapping
+    // Fetch real perfumes from JSON file
     const perfumes = await readPerfumes();
-    const recommendations = await generateSmartRecommendations({
-      topFamilies,
-      intensity,
-      archetype,
-      answers,
-      userHistory,
-      perfumes
-    });
+    
+    let recommendations = [];
+    let confidence = 0;
+    let metadata = {};
+    
+    // Try Gemini AI first for enhanced recommendations
+    if (geminiService.isAvailable()) {
+      try {
+        const aiResult = await geminiService.generatePerfumeRecommendations({
+          topFamilies,
+          intensity,
+          archetype,
+          answers,
+          userHistory
+        }, perfumes);
+        
+        recommendations = aiResult.recommendations;
+        confidence = aiResult.confidence;
+        metadata = {
+          ...aiResult.metadata,
+          userExperience: userHistory ? 'returning' : 'new',
+          algorithm: 'gemini-ai-enhanced',
+          fallback: false
+        };
+        
+      } catch (aiError) {
+        // Fallback to traditional algorithm
+        recommendations = await generateSmartRecommendations({
+          topFamilies,
+          intensity,
+          archetype,
+          answers,
+          userHistory,
+          perfumes
+        });
+        
+        confidence = calculateEnhancedConfidence({
+          answers,
+          topFamilies,
+          availableProducts: recommendations.length,
+          userHistory
+        });
+        
+        metadata = {
+          totalProducts: recommendations.length,
+          userExperience: userHistory ? 'returning' : 'new',
+          algorithm: 'personality-based-v2',
+          fallback: true,
+          aiError: aiError.message
+        };
+      }
+    } else {
+      // Use traditional algorithm
+      recommendations = await generateSmartRecommendations({
+        topFamilies,
+        intensity,
+        archetype,
+        answers,
+        userHistory,
+        perfumes
+      });
+      
+      confidence = calculateEnhancedConfidence({
+        answers,
+        topFamilies,
+        availableProducts: recommendations.length,
+        userHistory
+      });
+      
+      metadata = {
+        totalProducts: recommendations.length,
+        userExperience: userHistory ? 'returning' : 'new',
+        algorithm: 'personality-based-v2',
+        aiAvailable: false
+      };
+    }
 
-    // Calculate enhanced confidence score
-    const confidenceScore = calculateEnhancedConfidence({
-      answers,
-      topFamilies,
-      availableProducts: recommendations.length,
-      userHistory
+    const response = {
+      recommendations,
+      confidence,
+      metadata
+    };
+
+    res.json(response);
+
+  } catch (error) {
+    res.status(500).json({ 
+      message: 'Failed to generate recommendations',
+      error: error.message 
     });
+  }
+};
+
+// AI-powered occasion recommendations
+exports.getOccasionRecommendations = async (req, res) => {
+  try {
+    const { occasion, timeOfDay, season, formality, duration } = req.body;
+
+    if (!occasion) {
+      return res.status(400).json({ 
+        message: 'Occasion is required' 
+      });
+    }
+
+    const perfumes = await readPerfumes();
+    
+    let recommendations = [];
+    let confidence = 0;
+    let metadata = {};
+    
+    if (geminiService.isAvailable()) {
+      try {
+        const aiResult = await geminiService.generateOccasionRecommendations({
+          occasion,
+          timeOfDay: timeOfDay || 'any',
+          season: season || 'current',
+          formality: formality || 'casual',
+          duration: duration || 'medium'
+        }, perfumes);
+        
+        recommendations = aiResult.recommendations;
+        confidence = aiResult.confidence;
+        metadata = {
+          ...aiResult.metadata,
+          algorithm: 'gemini-ai-occasion',
+          fallback: false
+        };
+        
+      } catch (aiError) {
+        // Simple fallback for occasions
+        recommendations = await generateOccasionFallback(occasion, perfumes);
+        confidence = 70;
+        metadata = {
+          algorithm: 'occasion-fallback',
+          fallback: true,
+          aiError: aiError.message
+        };
+      }
+    } else {
+      recommendations = await generateOccasionFallback(occasion, perfumes);
+      confidence = 70;
+      metadata = {
+        algorithm: 'occasion-fallback',
+        aiAvailable: false
+      };
+    }
 
     res.json({
       recommendations,
-      confidence: confidenceScore,
-      metadata: {
-        totalProducts: recommendations.length,
-        userExperience: userHistory ? 'returning' : 'new',
-        algorithm: 'personality-based-v2'
-      }
+      confidence,
+      metadata,
+      occasion
     });
 
   } catch (error) {
-    console.error('Recommendation error:', error);
-    res.status(500).json({ message: 'Failed to generate recommendations' });
+    res.status(500).json({ 
+      message: 'Failed to generate occasion recommendations',
+      error: error.message 
+    });
+  }
+};
+
+// AI-powered seasonal recommendations
+exports.getSeasonalRecommendations = async (req, res) => {
+  try {
+    const { season, weather, temperature, humidity, location } = req.body;
+
+    const currentSeason = season || getCurrentSeason();
+    const perfumes = await readPerfumes();
+    
+    let recommendations = [];
+    let confidence = 0;
+    let metadata = {};
+    
+    if (geminiService.isAvailable()) {
+      try {
+        const aiResult = await geminiService.generateSeasonalRecommendations({
+          season: currentSeason,
+          weather: weather || 'typical',
+          temperature: temperature || 'moderate',
+          humidity: humidity || 'normal',
+          location
+        }, perfumes);
+        
+        recommendations = aiResult.recommendations;
+        confidence = aiResult.confidence;
+        metadata = {
+          ...aiResult.metadata,
+          algorithm: 'gemini-ai-seasonal',
+          fallback: false
+        };
+        
+      } catch (aiError) {
+        // Simple fallback for seasons
+        recommendations = await generateSeasonalFallback(currentSeason, perfumes);
+        confidence = 65;
+        metadata = {
+          algorithm: 'seasonal-fallback',
+          fallback: true,
+          aiError: aiError.message
+        };
+      }
+    } else {
+      recommendations = await generateSeasonalFallback(currentSeason, perfumes);
+      confidence = 65;
+      metadata = {
+        algorithm: 'seasonal-fallback',
+        aiAvailable: false
+      };
+    }
+
+    res.json({
+      recommendations,
+      confidence,
+      metadata,
+      season: currentSeason
+    });
+
+  } catch (error) {
+    res.status(500).json({ 
+      message: 'Failed to generate seasonal recommendations',
+      error: error.message 
+    });
   }
 };
 
@@ -73,158 +273,253 @@ const generateSmartRecommendations = async ({
   const recommendations = [];
   const intensityMap = { 1: 'light', 2: 'light', 3: 'moderate', 4: 'strong', 5: 'strong' };
   const preferredIntensity = intensityMap[intensity];
+  
+  // Create a mapping from scent families to main accord names
+  const familyToAccordMap = {
+    'citrus': ['citrus', 'lemon', 'bergamot', 'grapefruit', 'orange'],
+    'floral': ['floral', 'rose', 'jasmine', 'lily', 'violet'],
+    'woody': ['woody', 'sandalwood', 'cedar', 'vetiver'],
+    'oriental': ['oriental', 'amber', 'vanilla', 'spicy'],
+    'fresh': ['fresh', 'marine', 'aquatic', 'mint'],
+    'gourmand': ['vanilla', 'sweet', 'chocolate', 'caramel']
+  };
+  
   for (let i = 0; i < topFamilies.length && i < 3; i++) {
     const family = topFamilies[i];
-    let filtered = perfumes.filter(p => p.stock > 0 && p.scentFamily === family.family);
-    if (preferredIntensity) {
-      filtered = filtered.filter(p => p.intensity === preferredIntensity);
-    }
+    // Handle both string format and object format
+    const familyName = typeof family === 'string' ? family : (family.family || family.name || family);
+    const familyAccords = familyToAccordMap[familyName] || [familyName];
+    
+    // Filter perfumes based on main_accords instead of scentFamily
+    let filtered = perfumes.filter(p => {
+      // Check if perfume has stock (assuming all have stock for now)
+      const hasStock = !p.stock || p.stock > 0;
+      
+      // Check if any main accord matches the family
+      const hasMatchingAccord = p.main_accords && Array.isArray(p.main_accords) && 
+        p.main_accords.some(accord => 
+          familyAccords.some(famAccord => 
+            accord.name && accord.name.toLowerCase().includes(famAccord.toLowerCase())
+          )
+        );
+      
+      return hasStock && hasMatchingAccord;
+    });
+    
+    // Gender filtering if specified
     if (answers.gender_preference) {
-      filtered = filtered.filter(p => p.gender === 'unisex' || p.gender === answers.gender_preference.id);
+      filtered = filtered.filter(p => {
+        if (!p.name) return true; // Skip filtering if no name
+        const name = p.name.toLowerCase();
+        const genderPref = typeof answers.gender_preference === 'string' ? 
+          answers.gender_preference : answers.gender_preference.id;
+        
+        if (genderPref === 'men' || genderPref === 'male') {
+          return name.includes('men') || name.includes('male') || 
+                 (!name.includes('women') && !name.includes('female'));
+        } else if (genderPref === 'women' || genderPref === 'female') {
+          return name.includes('women') || name.includes('female') || 
+                 (!name.includes('men') && !name.includes('male'));
+        }
+        return true; // unisex or no preference
+      });
     }
-    if (answers.occasion_preference) {
-      filtered = filtered.filter(p => Array.isArray(p.occasions) && p.occasions.includes(answers.occasion_preference));
-    }
-    if (userHistory && userHistory.length > 0) {
-      const purchasedIds = userHistory.flatMap(order => order.items.map(item => item.perfume._id));
-      filtered = filtered.filter(p => !purchasedIds.includes(p._id));
-    }
+    
+    // Sort by relevance and rating
     let matchingPerfumes = filtered.sort((a, b) => {
-      if (b.isPopular !== a.isPopular) return b.isPopular - a.isPopular;
-      if (b.rating !== a.rating) return b.rating - a.rating;
-      return new Date(b.createdAt) - new Date(a.createdAt);
+      // Calculate relevance score for sorting
+      const scoreA = calculateAccordMatch(a, familyAccords);
+      const scoreB = calculateAccordMatch(b, familyAccords);
+      
+      if (scoreA !== scoreB) return scoreB - scoreA;
+      
+      // Secondary sort by brand popularity (if brand exists)
+      const brandA = a.brand && a.brand.name ? a.brand.name : '';
+      const brandB = b.brand && b.brand.name ? b.brand.name : '';
+      
+      return brandB.localeCompare(brandA);
     }).slice(0, 3);
+    
+    // If no direct matches, get broader results
     if (matchingPerfumes.length === 0) {
-      let broader = perfumes.filter(p => p.stock > 0 && p.scentFamily === family.family);
-      if (userHistory && userHistory.length > 0) {
-        const purchasedIds = userHistory.flatMap(order => order.items.map(item => item.perfume._id));
-        broader = broader.filter(p => !purchasedIds.includes(p._id));
-      }
-      matchingPerfumes = broader.sort((a, b) => (b.rating - a.rating) || (new Date(b.createdAt) - new Date(a.createdAt))).slice(0, 2);
+      let broader = perfumes.filter(p => {
+        const hasStock = !p.stock || p.stock > 0;
+        // Broader match - just check if any accord name contains family name
+        const hasBroaderMatch = p.main_accords && Array.isArray(p.main_accords) && 
+          p.main_accords.some(accord => 
+            accord.name && accord.name.toLowerCase().includes(familyName.toLowerCase())
+          );
+        return hasStock && hasBroaderMatch;
+      });
+      
+      matchingPerfumes = broader.slice(0, 2);
     }
+    
     matchingPerfumes.forEach((perfume, index) => {
-      const score = calculatePerfumeScore(perfume, family, answers);
+      const score = calculatePerfumeScore(perfume, {family: familyName}, answers, familyAccords);
       recommendations.push({
-        id: `rec_${family.family}_${perfume._id}`,
+        id: `rec_${familyName}_${perfume._id || index}`,
         perfume,
         family: family.family,
         score: score,
         matchPercentage: Math.round(score),
         priority: i + 1,
         reasons: generateMatchReasons(perfume, family, archetype),
-        occasions: perfume.occasions || getOccasionsForFamily(family.family),
+        occasions: getOccasionsForFamily(family.family),
         confidence: family.score,
         isDirectMatch: true
       });
     });
   }
+  
+  // Fill with popular perfumes if needed
   if (recommendations.length < 4) {
-    let popular = perfumes.filter(p => p.stock > 0 && p.isPopular);
-    if (userHistory && userHistory.length > 0) {
-      const purchasedIds = userHistory.flatMap(order => order.items.map(item => item.perfume._id));
-      popular = popular.filter(p => !purchasedIds.includes(p._id));
-    }
-    popular.slice(0, 4 - recommendations.length).forEach(perfume => {
+    const popular = perfumes
+      .filter(p => p.brand && p.brand.name) // Has brand info
+      .slice(0, 4 - recommendations.length);
+    
+    popular.forEach((perfume, index) => {
       recommendations.push({
-        id: `rec_popular_${perfume._id}`,
+        id: `rec_popular_${perfume._id || index}`,
         perfume,
-        family: perfume.scentFamily,
+        family: getPrimaryFamily(perfume),
         score: 75,
         matchPercentage: 75,
         priority: 4,
-        reasons: ['Popular choice', 'Highly rated'],
-        occasions: perfume.occasions || ['versatile'],
+        reasons: ['Popular choice', 'Well-regarded brand'],
+        occasions: ['versatile'],
         confidence: 75,
         isDirectMatch: false
       });
     });
   }
+  
   return recommendations.sort((a, b) => b.score - a.score).slice(0, 6);
 };
 
-const calculatePerfumeScore = (perfume, family, answers) => {
+// Helper function to calculate accord match score
+const calculateAccordMatch = (perfume, familyAccords) => {
+  if (!perfume.main_accords || !Array.isArray(perfume.main_accords)) return 0;
+  
+  let score = 0;
+  perfume.main_accords.forEach(accord => {
+    if (accord.name && accord.intensity) {
+      familyAccords.forEach(famAccord => {
+        if (accord.name.toLowerCase().includes(famAccord.toLowerCase())) {
+          score += accord.intensity || 50; // Use intensity as score
+        }
+      });
+    }
+  });
+  
+  return score;
+};
+
+// Helper function to get primary family from perfume
+const getPrimaryFamily = (perfume) => {
+  if (!perfume.main_accords || !Array.isArray(perfume.main_accords)) return 'unknown';
+  
+  if (perfume.main_accords.length === 0) return 'unknown';
+  
+  // Return the highest intensity accord as primary family
+  const primaryAccord = perfume.main_accords.reduce((prev, current) => 
+    (current.intensity > prev.intensity) ? current : prev
+  );
+  
+  return primaryAccord.name || 'unknown';
+};
+
+const calculatePerfumeScore = (perfume, family, answers, familyAccords) => {
   let score = 70; // Base score
 
-  // Direct scent family match bonus
-  if (perfume.scentFamily === family.family) {
-    score += 20;
+  // Direct accord match bonus
+  if (perfume.main_accords && Array.isArray(perfume.main_accords)) {
+    const matchingAccords = perfume.main_accords.filter(accord => 
+      familyAccords.some(famAccord => 
+        accord.name && accord.name.toLowerCase().includes(famAccord.toLowerCase())
+      )
+    );
+    
+    if (matchingAccords.length > 0) {
+      score += 20;
+      // Bonus for high intensity matching accords
+      const avgIntensity = matchingAccords.reduce((sum, accord) => sum + (accord.intensity || 50), 0) / matchingAccords.length;
+      score += Math.round(avgIntensity / 10); // Convert intensity to score bonus
+    }
   }
 
-  // Note matching bonus (check all note layers)
-  const allNotes = [];
-  if (perfume.notes?.top) allNotes.push(...perfume.notes.top);
-  if (perfume.notes?.middle) allNotes.push(...perfume.notes.middle);
-  if (perfume.notes?.base) allNotes.push(...perfume.notes.base);
-  
-  const familyNotes = {
-    citrus: ['citrus', 'lemon', 'bergamot', 'grapefruit', 'orange', 'lime', 'mandarin'],
-    floral: ['rose', 'jasmine', 'lily', 'peony', 'magnolia', 'freesia', 'tuberose', 'ylang-ylang'],
-    woody: ['sandalwood', 'cedar', 'vetiver', 'oakmoss', 'amber', 'cedarwood'],
-    oriental: ['oud', 'saffron', 'patchouli', 'vanilla', 'exotic', 'agarwood', 'amber'],
-    fresh: ['marine', 'cucumber', 'mint', 'water', 'clean', 'crisp', 'sea salt'],
-    gourmand: ['vanilla', 'chocolate', 'caramel', 'honey', 'sweet', 'coffee', 'tonka bean']
-  };
-
-  const relevantNotes = familyNotes[family.family] || [];
-  const matchingNotes = allNotes.filter(note => 
-    relevantNotes.some(relevant => 
-      note.toLowerCase().includes(relevant.toLowerCase())
-    )
-  );
-  score += matchingNotes.length * 3;
+  // Brand quality bonus
+  if (perfume.brand && perfume.brand.name) {
+    score += 5;
+    
+    // Bonus for well-known brands
+    const premiumBrands = ['Tom Ford', 'Creed', 'Chanel', 'Dior', 'Guerlain', 'Hermès'];
+    if (premiumBrands.some(brand => 
+      perfume.brand.name.toLowerCase().includes(brand.toLowerCase())
+    )) {
+      score += 10;
+    }
+  }
 
   // Intensity match bonus
   if (answers.scent_intensity) {
     const intensityMap = { 1: 'light', 2: 'light', 3: 'moderate', 4: 'strong', 5: 'strong' };
     const preferredIntensity = intensityMap[answers.scent_intensity.value];
-    if (perfume.intensity === preferredIntensity) {
-      score += 10;
+    
+    // Estimate intensity from main accords
+    if (perfume.main_accords && Array.isArray(perfume.main_accords)) {
+      const avgIntensity = perfume.main_accords.reduce((sum, accord) => 
+        sum + (accord.intensity || 50), 0) / perfume.main_accords.length;
+      
+      const perfumeIntensity = avgIntensity > 80 ? 'strong' : avgIntensity > 50 ? 'moderate' : 'light';
+      
+      if (perfumeIntensity === preferredIntensity) {
+        score += 10;
+      }
     }
   }
 
-  // Gender preference match
-  if (answers.gender_preference) {
-    if (perfume.gender === 'unisex' || perfume.gender === answers.gender_preference.id) {
+  // Gender preference match (based on name)
+  if (answers.gender_preference && perfume.name) {
+    const name = perfume.name.toLowerCase();
+    const genderPref = answers.gender_preference.id;
+    
+    if (genderPref === 'men' || genderPref === 'male') {
+      if (name.includes('men') || name.includes('male')) {
+        score += 8;
+      } else if (name.includes('women') || name.includes('female')) {
+        score -= 5; // Penalty for opposite gender
+      }
+    } else if (genderPref === 'women' || genderPref === 'female') {
+      if (name.includes('women') || name.includes('female')) {
+        score += 8;
+      } else if (name.includes('men') || name.includes('male')) {
+        score -= 5; // Penalty for opposite gender
+      }
+    }
+    
+    // Bonus for unisex fragrances
+    if (name.includes('unisex') || (name.includes('women') && name.includes('men'))) {
       score += 5;
     }
   }
 
-  // Price range preference (if specified)
-  if (answers.budget) {
-    const budgetRanges = {
-      'under_2000': [0, 2000],
-      '2000_4000': [2000, 4000],
-      '4000_6000': [4000, 6000],
-      'above_6000': [6000, Infinity]
-    };
-    
-    const [min, max] = budgetRanges[answers.budget.id] || [0, Infinity];
-    if (perfume.price >= min && perfume.price <= max) {
-      score += 8;
-    }
-  }
-
-  // Stock availability bonus
-  if (perfume.stock > 10) {
+  // Image availability bonus
+  if (perfume.image_url) {
     score += 3;
   }
 
-  // Rating bonus
-  if (perfume.rating > 4.0) {
+  // Price reasonableness (assume most perfumes under ₹10000 are reasonable)
+  if (perfume.price && perfume.price <= 10000) {
     score += 5;
   }
 
-  // Popular item bonus
-  if (perfume.isPopular) {
-    score += 3;
-  }
+  // Penalize if no essential data
+  if (!perfume.name) score -= 10;
+  if (!perfume.brand || !perfume.brand.name) score -= 5;
+  if (!perfume.main_accords || perfume.main_accords.length === 0) score -= 15;
 
-  // New item bonus (slight penalty for being untested)
-  if (perfume.isNew) {
-    score -= 2;
-  }
-
-  return Math.min(score, 100);
+  return Math.min(Math.max(score, 0), 100); // Ensure score is between 0-100
 };
 
 const calculateEnhancedConfidence = ({
@@ -273,19 +568,36 @@ const generateMatchReasons = (perfume, family, archetype) => {
   
   reasons.push(`Matches your ${family.family} preference`);
   
-  if (archetype) {
-    reasons.push(`Perfect for ${archetype.type.toLowerCase()}`);
+  if (archetype && archetype.type) {
+    reasons.push(`Perfect for ${archetype.type.toLowerCase()} personality`);
   }
   
-  if (perfume.notes && perfume.notes.length > 0) {
-    reasons.push(`Features ${perfume.notes.slice(0, 2).join(' and ')} notes`);
+  // Generate reasons based on main accords
+  if (perfume.main_accords && Array.isArray(perfume.main_accords)) {
+    const topAccords = perfume.main_accords
+      .sort((a, b) => (b.intensity || 0) - (a.intensity || 0))
+      .slice(0, 2)
+      .map(accord => accord.name)
+      .filter(name => name);
+    
+    if (topAccords.length > 0) {
+      reasons.push(`Features ${topAccords.join(' and ')} notes`);
+    }
   }
   
-  if (perfume.stock > 5) {
-    reasons.push('Currently in stock');
+  // Add brand reputation reason
+  if (perfume.brand && perfume.brand.name) {
+    const premiumBrands = ['Tom Ford', 'Creed', 'Chanel', 'Dior', 'Guerlain'];
+    if (premiumBrands.some(brand => 
+      perfume.brand.name.toLowerCase().includes(brand.toLowerCase())
+    )) {
+      reasons.push(`From prestigious ${perfume.brand.name} collection`);
+    } else {
+      reasons.push(`Quality fragrance from ${perfume.brand.name}`);
+    }
   }
   
-  return reasons;
+  return reasons.slice(0, 3); // Limit to 3 reasons
 };
 
 const getOccasionsForFamily = (family) => {
@@ -356,7 +668,103 @@ const findSimilarPerfumes = async (purchasedPerfumes) => {
   }));
 };
 
+// Helper function to get current season
+const getCurrentSeason = () => {
+  const month = new Date().getMonth() + 1;
+  if (month >= 3 && month <= 5) return 'spring';
+  if (month >= 6 && month <= 8) return 'summer';
+  if (month >= 9 && month <= 11) return 'autumn';
+  return 'winter';
+};
+
+// Fallback occasion recommendations
+const generateOccasionFallback = async (occasion, perfumes) => {
+  const occasionMapping = {
+    'work': ['woody', 'fresh', 'citrus'],
+    'date': ['floral', 'oriental', 'sweet'],
+    'party': ['oriental', 'spicy', 'sweet'],
+    'formal': ['woody', 'elegant', 'sophisticated'],
+    'casual': ['fresh', 'light', 'citrus'],
+    'gym': ['fresh', 'light', 'clean'],
+    'travel': ['fresh', 'versatile', 'moderate']
+  };
+
+  const relevantAccords = occasionMapping[occasion.toLowerCase()] || ['fresh', 'versatile'];
+  
+  const filtered = perfumes.filter(p => 
+    p.main_accords && p.main_accords.some(accord => 
+      relevantAccords.some(relevant => 
+        accord.name.toLowerCase().includes(relevant.toLowerCase())
+      )
+    )
+  ).slice(0, 5);
+
+  return filtered.map(perfume => ({
+    id: `occasion_${perfume.name.replace(/\s+/g, '_')}`,
+    perfume,
+    name: perfume.name,
+    brand: perfume.brand?.name || 'Unknown',
+    confidence: 75,
+    reason: `Suitable for ${occasion}`,
+    source: 'occasion-fallback'
+  }));
+};
+
+// Fallback seasonal recommendations
+const generateSeasonalFallback = async (season, perfumes) => {
+  const seasonalMapping = {
+    'spring': ['floral', 'fresh', 'green', 'light'],
+    'summer': ['citrus', 'marine', 'fresh', 'light'],
+    'autumn': ['woody', 'warm', 'spicy', 'amber'],
+    'winter': ['oriental', 'rich', 'warm', 'vanilla']
+  };
+
+  const relevantAccords = seasonalMapping[season.toLowerCase()] || ['fresh', 'versatile'];
+  
+  const filtered = perfumes.filter(p => 
+    p.main_accords && p.main_accords.some(accord => 
+      relevantAccords.some(relevant => 
+        accord.name.toLowerCase().includes(relevant.toLowerCase())
+      )
+    )
+  ).slice(0, 5);
+
+  return filtered.map(perfume => ({
+    id: `seasonal_${perfume.name.replace(/\s+/g, '_')}`,
+    perfume,
+    name: perfume.name,
+    brand: perfume.brand?.name || 'Unknown',
+    confidence: 70,
+    reason: `Perfect for ${season} season`,
+    source: 'seasonal-fallback'
+  }));
+};
+
+// Get AI service status
+exports.getAIStatus = async (req, res) => {
+  try {
+    const status = geminiService.getStatus();
+    res.json({
+      success: true,
+      aiService: 'Google Gemini',
+      ...status,
+      message: status.available 
+        ? 'AI-powered recommendations are available' 
+        : 'AI service unavailable, using traditional algorithm'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error checking AI service status',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getPersonalityRecommendations: exports.getPersonalityRecommendations,
-  getHistoryBasedRecommendations: exports.getHistoryBasedRecommendations
+  getOccasionRecommendations: exports.getOccasionRecommendations,
+  getSeasonalRecommendations: exports.getSeasonalRecommendations,
+  getHistoryBasedRecommendations: exports.getHistoryBasedRecommendations,
+  getAIStatus: exports.getAIStatus
 };

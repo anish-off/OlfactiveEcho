@@ -5,8 +5,22 @@ import LoginRedirectWrapper from '@/components/login/LoginRedirectWrapper';
 import SampleSection from '@/components/product/SampleSection';
 import { getPerfume, listPerfumes } from '@/api/perfume';
 import { useCart } from '@/context/CartContext';
+import { getImageWithFallbacks, getProxiedImageUrl } from '@/utils/imageUtils';
 import toast from 'react-hot-toast';
 
+// Utility function to clean perfume names by removing gender specifications
+const cleanPerfumeName = (name) => {
+  if (!name) return '';
+  return name
+    .replace(/ for women and men$/i, '')
+    .replace(/ for women$/i, '')
+    .replace(/ for men$/i, '')
+    .replace(/ - Women$/i, '')
+    .replace(/ - Men$/i, '')
+    .replace(/ \(Women\)$/i, '')
+    .replace(/ \(Men\)$/i, '')
+    .trim();
+};
 
 const Product = () => {
   const { id } = useParams();
@@ -35,7 +49,7 @@ const Product = () => {
   },[id]);
 
   const productImages = useMemo(()=>{
-    const img = product?.imageUrl || product?.image || 'https://via.placeholder.com/600x600?text=Fragrance';
+    const img = getProxiedImageUrl(getImageWithFallbacks(product));
     return [img, img, img, img, img];
   },[product]);
 
@@ -54,7 +68,21 @@ const Product = () => {
       base: ['Sandalwood','Vetiver','Vanilla'],
     };
     
-    // Handle new nested format
+    // Handle new database format with "Top Notes", "Middle Notes", "Base Notes", "General Notes"
+    if (product.notes["Top Notes"] || product.notes["Middle Notes"] || product.notes["Base Notes"] || product.notes["General Notes"]) {
+      const topNotes = product.notes["Top Notes"] || [];
+      const middleNotes = product.notes["Middle Notes"] || [];
+      const baseNotes = product.notes["Base Notes"] || [];
+      const generalNotes = product.notes["General Notes"] || [];
+      
+      return {
+        top: topNotes.length > 0 ? topNotes.map(n => n.name || n) : (generalNotes.length > 0 ? generalNotes.slice(0,3).map(n => n.name || n) : ['Citrus','Fresh']),
+        middle: middleNotes.length > 0 ? middleNotes.map(n => n.name || n) : (generalNotes.length > 3 ? generalNotes.slice(3,6).map(n => n.name || n) : ['Floral','Heart']),
+        base: baseNotes.length > 0 ? baseNotes.map(n => n.name || n) : (generalNotes.length > 6 ? generalNotes.slice(6,9).map(n => n.name || n) : ['Woody','Warm']),
+      };
+    }
+    
+    // Handle simple nested format
     if (product.notes.top || product.notes.middle || product.notes.base) {
       return {
         top: product.notes.top && product.notes.top.length > 0 ? product.notes.top : ['Citrus','Fresh'],
@@ -83,14 +111,15 @@ const Product = () => {
   useEffect(()=>{
     (async ()=>{
       try{
-        const all = await listPerfumes();
+        const data = await listPerfumes();
+        const all = Array.isArray(data) ? data : (data.perfumes || []);
         if (product) {
           // First try to find products with same scent family, then fallback to brand/category
           const rel = all.filter(p=> 
             p._id !== product._id && (
               p.scentFamily === product.scentFamily || 
               p.category === product.category || 
-              p.brand === product.brand
+              (p.brand?.name || p.brand) === (product.brand?.name || product.brand)
             )
           ).slice(0,4);
           setRelated(rel);
@@ -176,7 +205,7 @@ const Product = () => {
 
             {/* Main Product Image - Center */}
             <div className="lg:col-span-6 order-1 lg:order-2">
-              <div className="bg-gradient-to-br from-[#F2D785] to-white rounded-2xl p-8 shadow-lg">
+              <div className="bg-white rounded-2xl p-8 shadow-lg">
                 <img
                   src={productImages[selectedImage]}
                   alt={product?.name || 'Fragrance'}
@@ -197,8 +226,8 @@ const Product = () => {
                   <div className="flex items-center space-x-1" />
                 </div>
 
-                <h1 className="text-3xl lg:text-4xl font-bold text-black mb-2 mb-2">{product.name}</h1>
-                <p className="text-lg text-gray-600 mb-4">by {product.brand || 'Olfactive Echo'}</p>
+                <h1 className="text-3xl lg:text-4xl font-bold text-black mb-2 mb-2">{cleanPerfumeName(product.name)}</h1>
+                <p className="text-lg text-gray-600 mb-4">by {product.brand?.name || product.brand || 'Olfactive Echo'}</p>
                 <p className="text-[#8C501B] leading-relaxed mb-6">{product.description}</p>
 
                 <div className="flex items-baseline space-x-3 mb-6">
@@ -360,11 +389,11 @@ const Product = () => {
                     <div className="flex items-center space-x-2">
                       <div className="w-8 h-8 bg-[#8C501B] rounded-full flex items-center justify-center">
                         <span className="text-white font-bold text-xs">
-                          {(product?.brand || 'OE').charAt(0)}
+                          {(product?.brand?.name || product?.brand || 'OE').charAt(0)}
                         </span>
                       </div>
                       <div>
-                        <p className="font-medium text-[#8C501B] text-sm">{product?.brand || 'Olfactive Echo'}</p>
+                        <p className="font-medium text-[#8C501B] text-sm">{product?.brand?.name || product?.brand || 'Olfactive Echo'}</p>
                         <p className="text-xs text-gray-600 capitalize">{product?.scentFamily || 'Premium'} Family</p>
                       </div>
                     </div>
@@ -473,22 +502,24 @@ const Product = () => {
                   onClick={() => navigate(`/product/${relatedProduct._id}`, { state: { perfume: relatedProduct } })}
                   className="bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer hover:scale-105"
                 >
-                  <div className="bg-gradient-to-br from-[#F2D785] to-white p-4">
+                  <div className="bg-white p-6">
                     <img
-                      src={relatedProduct.imageUrl || 'https://via.placeholder.com/300x300?text=Fragrance'}
-                      alt={relatedProduct.name}
+                      src={getProxiedImageUrl(getImageWithFallbacks(relatedProduct))}
+                      alt={cleanPerfumeName(relatedProduct.name)}
                       className="w-full h-40 object-contain group-hover:scale-110 transition-transform duration-300"
                       onError={e => {
-                        e.target.src = `https://images.unsplash.com/photo-1541643600914-78b084683601?w=300&h=300&fit=crop&auto=format`;
+                        if (!e.target.src.includes('default-perfume.svg')) {
+                          e.target.src = '/perfume-images/default-perfume.svg';
+                        }
                       }}
                     />
                   </div>
                   
                   <div className="p-4">
                     <h3 className="font-semibold text-[#8C501B] mb-1 group-hover:text-[#BF7C2A] transition-colors">
-                      {relatedProduct.name}
+                      {cleanPerfumeName(relatedProduct.name)}
                     </h3>
-                    <p className="text-sm text-gray-600 mb-2">{relatedProduct.brand}</p>
+                    <p className="text-sm text-gray-600 mb-2">{relatedProduct.brand?.name || relatedProduct.brand}</p>
                     <p className="font-bold text-[#F2C84B] text-lg">₹{relatedProduct.price}</p>
                   </div>
                 </div>

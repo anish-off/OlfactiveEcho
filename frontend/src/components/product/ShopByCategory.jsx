@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { listPerfumes } from '@/api/perfume';
+import { getImageWithFallbacks, getProxiedImageUrl } from '@/utils/imageUtils';
 
 const placeholderImg = 'https://images.unsplash.com/photo-1595425964079-7b5485fe353f?auto=format&fit=crop&w=880&q=80';
 
@@ -11,12 +12,19 @@ const ShopByCategory = () => {
   useEffect(()=>{
     (async () => {
       try {
-        const perfumes = await listPerfumes();
+        const data = await listPerfumes({ limit: 100 });
+        const perfumes = Array.isArray(data) ? data : (data.perfumes || []);
         const map = new Map();
         perfumes.forEach(p => {
           if (!p.category) return;
           if (!map.has(p.category)) {
-            map.set(p.category, { name: p.category, image: p.imageUrl || placeholderImg, count: 1 });
+            const categoryImage = getProxiedImageUrl(getImageWithFallbacks({ 
+              image_url: p.image_url, 
+              imageUrl: p.imageUrl, 
+              image: p.image, 
+              name: p.name 
+            })) || placeholderImg;
+            map.set(p.category, { name: p.category, image: categoryImage, count: 1 });
           } else {
             map.get(p.category).count += 1;
           }

@@ -59,7 +59,6 @@ const ScentMatcher = () => {
   ];
 
   const handleRecommendation = (type, data) => {
-    console.log(`Received ${type} recommendation:`, data); // Debug log
     setRecommendations(prev => ({
       ...prev,
       [type]: data
@@ -169,7 +168,7 @@ const ScentMatcher = () => {
                     {recommendations.personality.archetype?.type}: {recommendations.personality.confidence}% confidence
                   </p>
                   <p className="text-xs text-amber-600 mt-1">
-                    {recommendations.personality.topFamilies ? 
+                    {recommendations.personality.topFamilies && Array.isArray(recommendations.personality.topFamilies) ? 
                       `Top families: ${recommendations.personality.topFamilies.slice(0, 2).map(f => f.family || f).join(', ')}` :
                       'Analyzing preferences...'}
                   </p>
@@ -231,18 +230,33 @@ const ScentMatcher = () => {
             </div>
 
             {/* Detailed Results Section */}
-            {recommendations.personality && recommendations.personality.recommendations && recommendations.personality.source === 'api' && (
-              <div className="mt-6 border-t border-amber-200 pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-medium text-gray-900">Your Top Fragrance Matches</h4>
-                  <div className="flex items-center text-sm text-green-600">
-                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                    Live from our perfume database
+            {(() => {
+              const currentRecommendations = recommendations[activeTab];
+              if (!currentRecommendations?.recommendations || !Array.isArray(currentRecommendations.recommendations)) {
+                return null;
+              }
+
+              const tabNames = {
+                personality: 'Personality-Based',
+                occasion: 'Occasion-Perfect',
+                seasonal: 'Season-Matched',
+                journey: 'Journey'
+              };
+
+              return (
+                <div className="mt-6 border-t border-amber-200 pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium text-gray-900">
+                      Your Top {tabNames[activeTab] || 'Fragrance'} Matches
+                    </h4>
+                    <div className="flex items-center text-sm text-green-600">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                      {currentRecommendations.source === 'api' ? 'AI-Powered Recommendations' : 'Curated Selection'}
+                    </div>
                   </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {recommendations.personality.recommendations.slice(0, 6).map((rec, index) => (
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {currentRecommendations.recommendations.slice(0, 6).map((rec, index) => (
                     <div key={rec.id || index} className="bg-gradient-to-br from-amber-50 to-yellow-50 p-4 rounded-lg border border-amber-100 hover:shadow-md transition-shadow">
                       <div className="flex justify-between items-start mb-2">
                         <h5 className="font-semibold text-gray-900 text-sm">
@@ -254,18 +268,40 @@ const ScentMatcher = () => {
                       </div>
                       
                       <p className="text-sm text-gray-600 mb-2">
-                        {rec.perfume?.brand || rec.fragrance?.brand}
+                        {rec.perfume?.brand?.name || rec.perfume?.brand || rec.fragrance?.brand?.name || rec.fragrance?.brand || 'Unknown Brand'}
                       </p>
                       
-                      {(rec.perfume?.notes || rec.fragrance?.notes) && (
-                        <div className="mb-2">
-                          <p className="text-xs text-gray-500">
-                            {(rec.perfume?.notes || rec.fragrance?.notes).slice(0, 3).join(' • ')}
-                          </p>
-                        </div>
-                      )}
+                      {/* Display main accords or notes */}
+                      {(() => {
+                        const notes = rec.perfume?.notes || rec.fragrance?.notes;
+                        const mainAccords = rec.perfume?.main_accords || rec.fragrance?.main_accords;
+                        
+                        // Handle notes array
+                        if (notes && Array.isArray(notes)) {
+                          return (
+                            <div className="mb-2">
+                              <p className="text-xs text-gray-500">
+                                {notes.slice(0, 3).join(' • ')}
+                              </p>
+                            </div>
+                          );
+                        }
+                        
+                        // Handle main_accords array
+                        if (mainAccords && Array.isArray(mainAccords)) {
+                          return (
+                            <div className="mb-2">
+                              <p className="text-xs text-gray-500">
+                                {mainAccords.slice(0, 3).map(accord => accord.name || accord).join(' • ')}
+                              </p>
+                            </div>
+                          );
+                        }
+                        
+                        return null;
+                      })()}
                       
-                      {rec.reasons && (
+                      {rec.reasons && Array.isArray(rec.reasons) && (
                         <div className="mb-2">
                           <p className="text-xs text-amber-700 italic">
                             {rec.reasons.slice(0, 2).join(', ')}
@@ -286,7 +322,7 @@ const ScentMatcher = () => {
                         </div>
                       </div>
                       
-                      {rec.occasions && (
+                      {rec.occasions && Array.isArray(rec.occasions) && (
                         <div className="mt-2 pt-2 border-t border-amber-100">
                           <p className="text-xs text-gray-500">
                             Perfect for: {rec.occasions.slice(0, 2).join(', ')}
@@ -297,22 +333,23 @@ const ScentMatcher = () => {
                   ))}
                 </div>
                 
-                {/* API Confidence Explanation */}
+                {/* AI Confidence Explanation */}
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <h5 className="text-sm font-medium text-blue-900 mb-1">
-                    How we calculate confidence ({recommendations.personality.confidence}%)
+                    How we calculate confidence ({currentRecommendations.confidence}%)
                   </h5>
                   <div className="text-xs text-blue-700 space-y-1">
-                    <p>• Quiz completion and preference clarity</p>
+                    <p>• Selection criteria and preference analysis</p>
                     <p>• Real product availability in our database</p>
                     <p>• Match with current stock and pricing</p>
-                    {recommendations.personality.metadata?.userExperience === 'returning' && (
+                    {currentRecommendations.metadata?.userExperience === 'returning' && (
                       <p>• Your previous purchase history</p>
                     )}
                   </div>
                 </div>
               </div>
-            )}
+              );
+            })()}
             
             {/* Fallback/Error Display */}
             {recommendations.personality && recommendations.personality.source !== 'api' && (
@@ -342,10 +379,30 @@ const ScentMatcher = () => {
                           {rec.matchPercentage}% match
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 mb-2">{rec.fragrance?.brand}</p>
-                      <p className="text-xs text-gray-500 mb-2">
-                        {rec.fragrance?.notes?.join(' • ')}
-                      </p>
+                      <p className="text-sm text-gray-600 mb-2">{rec.fragrance?.brand?.name || rec.fragrance?.brand || 'Unknown Brand'}</p>
+                      {/* Handle notes/main_accords for fallback recommendations */}
+                      {(() => {
+                        const notes = rec.fragrance?.notes;
+                        const mainAccords = rec.fragrance?.main_accords;
+                        
+                        if (notes && Array.isArray(notes)) {
+                          return (
+                            <p className="text-xs text-gray-500 mb-2">
+                              {notes.join(' • ')}
+                            </p>
+                          );
+                        }
+                        
+                        if (mainAccords && Array.isArray(mainAccords)) {
+                          return (
+                            <p className="text-xs text-gray-500 mb-2">
+                              {mainAccords.slice(0, 3).map(accord => accord.name || accord).join(' • ')}
+                            </p>
+                          );
+                        }
+                        
+                        return null;
+                      })()}
                       <div className="flex justify-between items-center">
                         <span className="text-sm font-medium text-amber-600">₹{rec.fragrance?.price}</span>
                         <span className="text-xs text-gray-500 capitalize">{rec.fragrance?.intensity}</span>
@@ -416,26 +473,6 @@ const ScentMatcher = () => {
             Shop Recommended Fragrances
           </button>
         </div>
-
-        {/* Debug Section - Remove in production */}
-        {Object.keys(recommendations).length > 0 && (
-          <div className="mt-8 p-4 bg-gray-100 rounded-lg">
-            <h4 className="font-medium text-gray-900 mb-2">Debug Info (Development Only)</h4>
-            <pre className="text-xs text-gray-600 overflow-auto max-h-40">
-              {JSON.stringify(recommendations, (key, value) => {
-                // Skip DOM elements and functions to avoid circular references
-                if (value instanceof HTMLElement || typeof value === 'function') {
-                  return '[DOM Element/Function]';
-                }
-                // Skip React fiber properties
-                if (key.startsWith('__react') || key === 'stateNode') {
-                  return '[React Internal]';
-                }
-                return value;
-              }, 2)}
-            </pre>
-          </div>
-        )}
       </div>
     </div>
   );

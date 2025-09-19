@@ -13,8 +13,9 @@ const ProductList = () => {
     (async () => {
       try {
         setLoading(true);
-        const data = await listPerfumes();
-        setProducts(data);
+        const data = await listPerfumes({ limit: 100 });
+        const products = Array.isArray(data) ? data : (data.perfumes || []);
+        setProducts(products);
       } catch (e) {
         setError("Failed to load products");
       } finally {

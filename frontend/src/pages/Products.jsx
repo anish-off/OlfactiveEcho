@@ -34,7 +34,7 @@ const Products = () => {
             className="space-y-6"
           >
             <Link
-              to="/products/all"
+              to="/collections"
               className="inline-flex items-center justify-center px-10 py-5 bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90 text-white rounded-full text-xl font-medium shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
             >
               Explore All Products

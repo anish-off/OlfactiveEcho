@@ -16,10 +16,9 @@ export const getPersonalityRecommendations = async (quizResults) => {
       data: response.data
     };
   } catch (error) {
-    console.error('Personality recommendations API error:', error);
     return {
       success: false,
-      error: error.response?.data?.message || 'Failed to get recommendations'
+      error: error.response?.data?.message || error.message || 'Failed to get recommendations'
     };
   }
 };
@@ -34,7 +33,6 @@ export const getHistoryBasedRecommendations = async (userId) => {
       data: response.data
     };
   } catch (error) {
-    console.error('History recommendations API error:', error);
     return {
       success: false,
       error: error.response?.data?.message || 'Failed to get history-based recommendations'
@@ -52,7 +50,6 @@ export const getTrendingRecommendations = async () => {
       data: response.data
     };
   } catch (error) {
-    console.error('Trending recommendations API error:', error);
     return {
       success: false,
       error: error.response?.data?.message || 'Failed to get trending recommendations'
@@ -60,20 +57,36 @@ export const getTrendingRecommendations = async () => {
   }
 };
 
-// Get seasonal recommendations
-export const getSeasonalRecommendations = async () => {
+// Get seasonal recommendations (now AI-powered)
+export const getSeasonalRecommendations = async (seasonData = {}) => {
   try {
-    const response = await apiClient.get('/recommendations/seasonal');
+    const response = await apiClient.post('/recommendations/seasonal', seasonData);
     
     return {
       success: true,
       data: response.data
     };
   } catch (error) {
-    console.error('Seasonal recommendations API error:', error);
     return {
       success: false,
       error: error.response?.data?.message || 'Failed to get seasonal recommendations'
+    };
+  }
+};
+
+// Get occasion-based recommendations (AI-powered)
+export const getOccasionRecommendations = async (occasionData) => {
+  try {
+    const response = await apiClient.post('/recommendations/occasion', occasionData);
+    
+    return {
+      success: true,
+      data: response.data
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.response?.data?.message || 'Failed to get occasion recommendations'
     };
   }
 };
@@ -107,7 +120,6 @@ export const getDetailedRecommendations = async (quizResults) => {
       }
     };
   } catch (error) {
-    console.error('Detailed recommendations error:', error);
     return {
       success: false,
       error: 'Failed to get comprehensive recommendations'
@@ -204,9 +216,10 @@ export const validateRecommendationQuality = (recommendation) => {
 
 export default {
   getPersonalityRecommendations,
+  getOccasionRecommendations,
+  getSeasonalRecommendations,
   getHistoryBasedRecommendations,
   getTrendingRecommendations,
-  getSeasonalRecommendations,
   getDetailedRecommendations,
   validateRecommendationQuality
 };

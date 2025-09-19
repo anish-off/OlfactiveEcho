@@ -117,8 +117,6 @@ const PersonalityQuiz = ({ onComplete, onClose }) => {
       // Calculate personality profile first
       const localProfile = calculatePersonalityProfile(answers);
       
-      console.log('Local profile calculated:', localProfile); // Debug log
-      
       // Get real recommendations from API
       const apiResponse = await getPersonalityRecommendations({
         topFamilies: localProfile.topFamilies,
@@ -139,18 +137,15 @@ const PersonalityQuiz = ({ onComplete, onClose }) => {
           recommendationQuality: apiResponse.data.recommendations.map(validateRecommendationQuality)
         };
         
-        console.log('Enhanced profile with API data:', enhancedProfile); // Debug log
+        // Always clear the loading state first
+        setIsCompleting(false);
         
         // Call onComplete with enhanced profile
         if (onComplete && typeof onComplete === 'function') {
           onComplete(enhancedProfile);
-        } else {
-          console.log('API-Enhanced Personality Quiz Results:', enhancedProfile);
-          setIsCompleting(false);
         }
       } else {
         // Fallback to local recommendations if API fails
-        console.warn('API failed, using fallback:', apiResponse.error);
         
         // Generate local recommendations as fallback
         const fallbackRecommendations = generateRecommendations(
@@ -167,15 +162,14 @@ const PersonalityQuiz = ({ onComplete, onClose }) => {
           apiError: apiResponse.error
         };
         
+        // Always clear the loading state first
+        setIsCompleting(false);
+        
         if (onComplete && typeof onComplete === 'function') {
           onComplete(fallbackProfile);
-        } else {
-          console.log('Fallback Personality Quiz Results:', fallbackProfile);
-          setIsCompleting(false);
         }
       }
     } catch (error) {
-      console.error('Error in completeQuiz:', error);
       
       // Generate local fallback
       const localProfile = calculatePersonalityProfile(answers);
@@ -193,11 +187,11 @@ const PersonalityQuiz = ({ onComplete, onClose }) => {
         error: error.message
       };
       
+      // Always clear the loading state first
+      setIsCompleting(false);
+      
       if (onComplete && typeof onComplete === 'function') {
         onComplete(errorProfile);
-      } else {
-        console.log('Error Fallback Results:', errorProfile);
-        setIsCompleting(false);
       }
     }
   };

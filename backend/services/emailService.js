@@ -1,22 +1,46 @@
 const nodemailer = require('nodemailer');
+const { sendLocalEmail } = require('./localEmailService');
 
 // Email configuration
 const createTransporter = async () => {
+  // Check if we should force using Ethereal Email for testing
+  if (process.env.FORCE_ETHEREAL_EMAIL === 'true') {
+    console.log('🧪 Using Ethereal Email for testing (forced by environment variable)');
+    return createEtherealTransporter();
+  }
+  
   // Check if email credentials are provided
   if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    // Use Gmail SMTP with explicit configuration
-    return nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      },
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
+    try {
+      // Use Gmail SMTP with robust configuration
+      const transporter = nodemailer.createTransport({
+        service: 'gmail', // Use service instead of manual host configuration
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        },
+        pool: true, // Use pooled connections
+        maxConnections: 1, // Limit to 1 connection
+        maxMessages: 3, // Send at most 3 messages per connection
+        rateDelta: 20000, // Limit to 3 messages per 20 seconds
+        rateLimit: 3,
+        tls: {
+          rejectUnauthorized: false
+        },
+        connectionTimeout: 10000, // 10 second timeout (reduced for faster fallback)
+        greetingTimeout: 5000, // 5 second greeting timeout
+        socketTimeout: 10000 // 10 second socket timeout
+      });
+      
+      // Test the connection
+      await transporter.verify();
+      console.log('✅ Gmail SMTP connection verified successfully');
+      return transporter;
+    } catch (error) {
+      console.warn(`⚠️ Gmail SMTP connection failed: ${error.message}`);
+      console.log('🔄 Falling back to Ethereal Email for testing...');
+      return createEtherealTransporter();
+    }
   } else if (process.env.SENDGRID_API_KEY) {
     // Use SendGrid
     return nodemailer.createTransport({
@@ -27,36 +51,47 @@ const createTransporter = async () => {
       }
     });
   } else {
-    // Fallback to Ethereal Email for testing (creates temporary accounts)
+    // Use Ethereal Email for testing
     console.log('⚠️  No email credentials found. Using Ethereal Email for testing.');
-    console.log('📧 Creating test account...');
+    return createEtherealTransporter();
+  }
+};
+
+// Create Ethereal Email transporter for testing
+const createEtherealTransporter = async () => {
+  console.log('📧 Creating Ethereal test account...');
+  
+  try {
+    const testAccount = await nodemailer.createTestAccount();
+    console.log('✅ Ethereal test account created:', testAccount.user);
     
-    try {
-      const testAccount = await nodemailer.createTestAccount();
-      console.log('✅ Test account created:', testAccount.user);
-      
-      return nodemailer.createTransport({
-        host: 'smtp.ethereal.email',
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      });
-    } catch (error) {
-      console.error('❌ Failed to create test account, using fallback');
-      // Fallback to a simple configuration
-      return nodemailer.createTransport({
-        host: 'smtp.ethereal.email',
-        port: 587,
-        secure: false,
-        auth: {
-          user: 'ethereal.user@ethereal.email',
-          pass: 'ethereal.pass'
-        }
-      });
-    }
+    return nodemailer.createTransport({
+      host: 'smtp.ethereal.email',
+      port: 587,
+      secure: false,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass,
+      },
+      connectionTimeout: 60000,
+      greetingTimeout: 30000,
+      socketTimeout: 60000
+    });
+  } catch (error) {
+    console.error('❌ Failed to create Ethereal test account, using fallback');
+    // Fallback to a simple configuration
+    return nodemailer.createTransport({
+      host: 'smtp.ethereal.email',
+      port: 587,
+      secure: false,
+      auth: {
+        user: 'ethereal.user@ethereal.email',
+        pass: 'ethereal.pass'
+      },
+      connectionTimeout: 60000,
+      greetingTimeout: 30000,
+      socketTimeout: 60000
+    });
   }
 };
 
@@ -273,71 +308,138 @@ const generateOrderStatusUpdateHTML = (order, user, oldStatus, newStatus) => {
 
 // Send order confirmation email
 const sendOrderConfirmationEmail = async (order, user) => {
-  try {
-    const transporter = await createTransporter();
-    
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || 'OlfactiveEcho <noreply@olfactiveecho.com>',
-      to: user.email,
-      subject: `Order Confirmation #${order._id.toString().slice(-8).toUpperCase()} - OlfactiveEcho`,
-      html: generateOrderConfirmationHTML(order, user)
-    };
-    
-    const result = await transporter.sendMail(mailOptions);
-    console.log('✅ Order confirmation email sent successfully!');
-    console.log('📧 Message ID:', result.messageId);
-    
-    // If using Ethereal Email, log the preview URL
-    if (result.messageId && !process.env.EMAIL_USER) {
-      console.log('🔗 Preview URL:', nodemailer.getTestMessageUrl(result));
-    }
-    
-    return result;
-  } catch (error) {
-    console.error('❌ Error sending order confirmation email:', error.message);
-    
-    // Don't throw error in production - log it and continue
-    if (process.env.NODE_ENV === 'production') {
-      console.log('📝 Email queued for retry (production mode)');
-      // In production, you might want to queue this for retry
-      return { messageId: 'queued', error: error.message };
-    } else {
-      console.log('🔧 Development mode: Email sending failed but order will continue');
-      return { messageId: 'dev-mode-skip', error: error.message };
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || 'OlfactiveEcho <noreply@olfactiveecho.com>',
+    to: user.email,
+    subject: `Order Confirmation #${order._id.toString().slice(-8).toUpperCase()} - OlfactiveEcho`,
+    html: generateOrderConfirmationHTML(order, user)
+  };
+
+  // Try sending via SMTP first
+  let attempt = 0;
+  const maxAttempts = 2; // Reduced attempts for faster fallback
+  
+  while (attempt < maxAttempts) {
+    try {
+      attempt++;
+      console.log(`📧 Attempting to send order confirmation email via SMTP (attempt ${attempt}/${maxAttempts})...`);
+      
+      const transporter = await createTransporter();
+      const result = await transporter.sendMail(mailOptions);
+      
+      console.log('✅ Order confirmation email sent successfully via SMTP!');
+      console.log('📧 Message ID:', result.messageId);
+      
+      // If using Ethereal Email, log the preview URL
+      if (result.messageId && !process.env.EMAIL_USER) {
+        console.log('🔗 Preview URL:', nodemailer.getTestMessageUrl(result));
+      }
+      
+      return result;
+    } catch (error) {
+      console.error(`❌ SMTP attempt ${attempt} failed:`, error.message);
+      
+      // If it's the last attempt or not a connectivity issue, try local simulation
+      if (attempt === maxAttempts || !isRetryableError(error)) {
+        console.log('📧 SMTP failed, falling back to local email simulation...');
+        
+        try {
+          const localResult = await sendLocalEmail(mailOptions);
+          console.log('✅ Order confirmation email saved locally!');
+          console.log('📧 Local Message ID:', localResult.messageId);
+          return localResult;
+        } catch (localError) {
+          console.error('❌ Local email simulation also failed:', localError.message);
+          
+          // Final fallback
+          if (process.env.NODE_ENV === 'production') {
+            console.log('📝 Email queued for retry (production mode)');
+            return { messageId: 'queued', error: error.message };
+          } else {
+            console.log('🔧 Development mode: All email methods failed but order will continue');
+            return { messageId: 'dev-mode-skip', error: error.message };
+          }
+        }
+      }
+      
+      // Wait before retrying (reduced wait time)
+      const waitTime = Math.pow(2, attempt) * 500; // 1s, 2s
+      console.log(`⏰ Waiting ${waitTime}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
     }
   }
 };
 
+// Check if error is retryable
+const isRetryableError = (error) => {
+  const retryableErrors = [
+    'ETIMEDOUT',
+    'ECONNRESET',
+    'ENOTFOUND',
+    'ECONNREFUSED',
+    'EHOSTUNREACH',
+    'ENETUNREACH'
+  ];
+  
+  return retryableErrors.some(code => error.message.includes(code) || error.code === code);
+};
+
 // Send order status update email
 const sendOrderStatusUpdateEmail = async (order, user, oldStatus, newStatus) => {
-  try {
-    const transporter = await createTransporter();
-    
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || 'OlfactiveEcho <noreply@olfactiveecho.com>',
-      to: user.email,
-      subject: `Order Update #${order._id.toString().slice(-8).toUpperCase()} - ${newStatus.toUpperCase()}`,
-      html: generateOrderStatusUpdateHTML(order, user, oldStatus, newStatus)
-    };
-    
-    const result = await transporter.sendMail(mailOptions);
-    console.log('Order status update email sent:', result.messageId);
-    return result;
-  } catch (error) {
-    console.error('❌ Error sending order status update email:', error.message);
-    
-    // Don't throw error in production - log it and continue
-    if (process.env.NODE_ENV === 'production') {
-      console.log('📝 Status update email queued for retry (production mode)');
-      return { messageId: 'queued', error: error.message };
-    } else {
-      console.log('🔧 Development mode: Status email failed but update will continue');
-      return { messageId: 'dev-mode-skip', error: error.message };
+  let attempt = 0;
+  const maxAttempts = 3;
+  
+  while (attempt < maxAttempts) {
+    try {
+      attempt++;
+      console.log(`📧 Attempting to send order status update email (attempt ${attempt}/${maxAttempts})...`);
+      
+      const transporter = await createTransporter();
+      
+      const mailOptions = {
+        from: process.env.EMAIL_FROM || 'OlfactiveEcho <noreply@olfactiveecho.com>',
+        to: user.email,
+        subject: `Order Update #${order._id.toString().slice(-8).toUpperCase()} - ${newStatus.toUpperCase()}`,
+        html: generateOrderStatusUpdateHTML(order, user, oldStatus, newStatus)
+      };
+      
+      const result = await transporter.sendMail(mailOptions);
+      console.log('✅ Order status update email sent successfully!');
+      console.log('📧 Message ID:', result.messageId);
+      
+      // If using Ethereal Email, log the preview URL
+      if (result.messageId && !process.env.EMAIL_USER) {
+        console.log('🔗 Preview URL:', nodemailer.getTestMessageUrl(result));
+      }
+      
+      return result;
+    } catch (error) {
+      console.error(`❌ Status email attempt ${attempt} failed:`, error.message);
+      
+      // If it's the last attempt or not a connectivity issue, handle differently
+      if (attempt === maxAttempts || !isRetryableError(error)) {
+        console.error('📧 Final status email attempt failed:', error.message);
+        
+        // Don't throw error in production - log it and continue
+        if (process.env.NODE_ENV === 'production') {
+          console.log('📝 Status update email queued for retry (production mode)');
+          return { messageId: 'queued', error: error.message };
+        } else {
+          console.log('🔧 Development mode: Status email failed but update will continue');
+          return { messageId: 'dev-mode-skip', error: error.message };
+        }
+      }
+      
+      // Wait before retrying (exponential backoff)
+      const waitTime = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+      console.log(`⏰ Waiting ${waitTime}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
     }
   }
 };
 
 module.exports = {
   sendOrderConfirmationEmail,
-  sendOrderStatusUpdateEmail
+  sendOrderStatusUpdateEmail,
+  isRetryableError
 };

@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Home from './pages/Home';
 import Products from './pages/Products';
+import Shop from './pages/Shop';
 import ProductsAll from './pages/ProductsAll';
 import Product from './pages/Product';
 import Login from './pages/Login';
@@ -17,7 +18,6 @@ import PostDetail from './pages/PostDetail'; // New Import
 import Profile from './pages/Profile'; // Already used, but for clarity
 import SampleCheckout from './pages/SampleCheckout'; // New Import
 import Samples from './pages/Samples'; // New Import
-import Shop from './pages/Shop'; // New Import
 import AboutUsPage from './pages/AboutUsPage'; // Added missing import
 import AccountSettings from './pages/AccountSettings'; // Added missing import
 import WishlistPage from './pages/WishlistPage'; // Added missing import
@@ -29,12 +29,14 @@ import ScentMatcher from './pages/ScentMatcher';
 import LayoutWithSidebar from './components/layout/LayoutWithSidebar';
 import NavbarWrapper from './components/NavbarWrapper';
 import ProtectedRoute from './components/ProtectedRoute';
+import ScrollToTop from './components/ScrollToTop';
 
 const AppContent = () => {
   const { isLoggedIn } = useAuth();
 
   return (
     <>
+      <ScrollToTop />
       <NavbarWrapper />
       <Routes>
         {/* Public routes */}
@@ -42,13 +44,12 @@ const AppContent = () => {
         <Route path="/register" element={isLoggedIn ? <Navigate to="/" /> : <Register />} />
         <Route path="/" element={<Home />} />
         <Route path="/products" element={<Products />} />
-        <Route path="/products/all" element={<ProductsAll />} />
         <Route path="/product/:id" element={<Product />} />
         <Route path="/forgot-password" element={<ForgotPassword />} /> 
         <Route path="/samples" element={<Samples />} /> 
         <Route path="/shop" element={<Shop />} />
         <Route path="/about" element={<AboutUsPage />} /> 
-        <Route path="/collections" element={<Shop />} /> 
+        <Route path="/collections" element={<ProductsAll />} /> 
         <Route path="/chatbot" element={<PerfumeFinder />} /> 
         <Route path="/scent-matcher" element={<ScentMatcher />} /> 
 
