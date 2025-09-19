@@ -193,7 +193,7 @@ const ProductsAll = () => {
                 <h3 className="font-bold text-lg text-gray-900 mb-1 group-hover:text-[#BF7C2A] transition-colors">
                   {perfume.name}
                 </h3>
-                <p className="text-gray-600 text-sm mb-3">{perfume.brand || 'Olfactive Echo'}</p>
+                <p className="text-gray-600 text-sm mb-3">{(typeof perfume.brand === 'object' ? perfume.brand?.name : perfume.brand) || 'Olfactive Echo'}</p>
 
                 <p className="text-gray-700 text-sm mb-4 line-clamp-2">
                   {perfume.description}
