@@ -20,7 +20,14 @@ export const updatePerfume = async (id, data) => {
   return res.data;
 };
 
+
 export const deletePerfume = async (id) => {
   const res = await apiClient.delete(`/perfumes/${id}`);
+  return res.data;
+};
+
+// Update only image_url or photos for a perfume
+export const updatePerfumeImage = async (id, imageData) => {
+  const res = await apiClient.patch(`/perfumes/${id}/image`, imageData);
   return res.data;
 };

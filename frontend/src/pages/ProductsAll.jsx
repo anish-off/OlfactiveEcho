@@ -149,7 +149,7 @@ const ProductsAll = () => {
             >
               <div className="relative overflow-hidden bg-gradient-to-br from-[#F2D785] to-[#F2C84B]">
                 <img
-                  src={perfume.imageUrl || `/perfume-images/${perfume.name?.toLowerCase().replace(/\s+/g, '-')}.svg` || 'https://via.placeholder.com/400x400?text=Fragrance'}
+                  src={perfume.image_url || 'https://fimgs.net/mdimg/perfume-thumbs/375x500.11209.jpg'}
                   alt={perfume.name}
                   className="w-full h-64 object-contain p-4 group-hover:scale-110 transition-transform duration-300"
                   onError={e => {

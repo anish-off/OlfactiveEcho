@@ -1,5 +1,13 @@
-const Perfume = require('../models/Perfume');
+
 const Order = require('../models/Order');
+const fs = require('fs').promises;
+const path = require('path');
+const perfumesFilePath = path.join(__dirname, '..', 'combined_perfumes.json');
+
+async function readPerfumes() {
+  const data = await fs.readFile(perfumesFilePath, 'utf8');
+  return JSON.parse(data);
+}
 
 // Enhanced recommendation controller with real perfume data
 exports.getPersonalityRecommendations = async (req, res) => {
@@ -18,13 +26,16 @@ exports.getPersonalityRecommendations = async (req, res) => {
       status: 'delivered' 
     }).populate('items.perfume') : null;
 
-    // Fetch real perfumes from database with scent family mapping
+
+    // Fetch real perfumes from JSON file with scent family mapping
+    const perfumes = await readPerfumes();
     const recommendations = await generateSmartRecommendations({
       topFamilies,
       intensity,
       archetype,
       answers,
-      userHistory
+      userHistory,
+      perfumes
     });
 
     // Calculate enhanced confidence score
@@ -56,87 +67,46 @@ const generateSmartRecommendations = async ({
   intensity,
   archetype,
   answers,
-  userHistory
+  userHistory,
+  perfumes
 }) => {
   const recommendations = [];
-  
-  // Get intensity mapping
   const intensityMap = { 1: 'light', 2: 'light', 3: 'moderate', 4: 'strong', 5: 'strong' };
   const preferredIntensity = intensityMap[intensity];
-
-  // Process each top family
   for (let i = 0; i < topFamilies.length && i < 3; i++) {
     const family = topFamilies[i];
-    
-    // Build query for matching perfumes using the new schema
-    const query = {
-      stock: { $gt: 0 }, // Only available products
-      scentFamily: family.family // Direct match with scentFamily field
-    };
-
-    // Add intensity preference if specified
+    let filtered = perfumes.filter(p => p.stock > 0 && p.scentFamily === family.family);
     if (preferredIntensity) {
-      query.intensity = preferredIntensity;
+      filtered = filtered.filter(p => p.intensity === preferredIntensity);
     }
-
-    // Add gender preference if specified
     if (answers.gender_preference) {
-      query.$or = [
-        { gender: 'unisex' },
-        { gender: answers.gender_preference.id }
-      ];
+      filtered = filtered.filter(p => p.gender === 'unisex' || p.gender === answers.gender_preference.id);
     }
-
-    // Add occasion preference if specified
     if (answers.occasion_preference) {
-      query.occasions = { $in: [answers.occasion_preference] };
+      filtered = filtered.filter(p => Array.isArray(p.occasions) && p.occasions.includes(answers.occasion_preference));
     }
-
-    // Exclude previously purchased items for returning users
     if (userHistory && userHistory.length > 0) {
-      const purchasedIds = userHistory.flatMap(order => 
-        order.items.map(item => item.perfume._id)
-      );
-      query._id = { $nin: purchasedIds };
+      const purchasedIds = userHistory.flatMap(order => order.items.map(item => item.perfume._id));
+      filtered = filtered.filter(p => !purchasedIds.includes(p._id));
     }
-
-    // Fetch matching perfumes
-    const matchingPerfumes = await Perfume.find(query)
-      .sort({ 
-        isPopular: -1,  // Popular items first
-        rating: -1,     // Then by rating
-        createdAt: -1   // Then by newest
-      })
-      .limit(3);
-
-    // If no direct matches, try broader search
+    let matchingPerfumes = filtered.sort((a, b) => {
+      if (b.isPopular !== a.isPopular) return b.isPopular - a.isPopular;
+      if (b.rating !== a.rating) return b.rating - a.rating;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    }).slice(0, 3);
     if (matchingPerfumes.length === 0) {
-      const broaderQuery = {
-        stock: { $gt: 0 },
-        scentFamily: family.family
-      };
-      
+      let broader = perfumes.filter(p => p.stock > 0 && p.scentFamily === family.family);
       if (userHistory && userHistory.length > 0) {
-        const purchasedIds = userHistory.flatMap(order => 
-          order.items.map(item => item.perfume._id)
-        );
-        broaderQuery._id = { $nin: purchasedIds };
+        const purchasedIds = userHistory.flatMap(order => order.items.map(item => item.perfume._id));
+        broader = broader.filter(p => !purchasedIds.includes(p._id));
       }
-
-      const broaderResults = await Perfume.find(broaderQuery)
-        .sort({ rating: -1, createdAt: -1 })
-        .limit(2);
-      
-      matchingPerfumes.push(...broaderResults);
+      matchingPerfumes = broader.sort((a, b) => (b.rating - a.rating) || (new Date(b.createdAt) - new Date(a.createdAt))).slice(0, 2);
     }
-
-    // Score and rank perfumes
     matchingPerfumes.forEach((perfume, index) => {
       const score = calculatePerfumeScore(perfume, family, answers);
-      
       recommendations.push({
         id: `rec_${family.family}_${perfume._id}`,
-        perfume: perfume.toObject(),
+        perfume,
         family: family.family,
         score: score,
         matchPercentage: Math.round(score),
@@ -148,31 +118,18 @@ const generateSmartRecommendations = async ({
       });
     });
   }
-
-  // If we don't have enough recommendations, add some popular items
   if (recommendations.length < 4) {
-    const popularQuery = {
-      stock: { $gt: 0 },
-      isPopular: true
-    };
-
+    let popular = perfumes.filter(p => p.stock > 0 && p.isPopular);
     if (userHistory && userHistory.length > 0) {
-      const purchasedIds = userHistory.flatMap(order => 
-        order.items.map(item => item.perfume._id)
-      );
-      popularQuery._id = { $nin: purchasedIds };
+      const purchasedIds = userHistory.flatMap(order => order.items.map(item => item.perfume._id));
+      popular = popular.filter(p => !purchasedIds.includes(p._id));
     }
-
-    const popularItems = await Perfume.find(popularQuery)
-      .sort({ rating: -1 })
-      .limit(4 - recommendations.length);
-
-    popularItems.forEach(perfume => {
+    popular.slice(0, 4 - recommendations.length).forEach(perfume => {
       recommendations.push({
         id: `rec_popular_${perfume._id}`,
-        perfume: perfume.toObject(),
+        perfume,
         family: perfume.scentFamily,
-        score: 75, // Good but not perfect match
+        score: 75,
         matchPercentage: 75,
         priority: 4,
         reasons: ['Popular choice', 'Highly rated'],
@@ -182,11 +139,7 @@ const generateSmartRecommendations = async ({
       });
     });
   }
-
-  // Sort by score and return top recommendations
-  return recommendations
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 6);
+  return recommendations.sort((a, b) => b.score - a.score).slice(0, 6);
 };
 
 const calculatePerfumeScore = (perfume, family, answers) => {
@@ -383,23 +336,21 @@ exports.getHistoryBasedRecommendations = async (req, res) => {
 };
 
 const findSimilarPerfumes = async (purchasedPerfumes) => {
-  // Extract common notes and categories
-  const allNotes = purchasedPerfumes.flatMap(p => p.notes || []);
+  const perfumes = await readPerfumes();
+  const allNotes = purchasedPerfumes.flatMap(p => Array.isArray(p.notes) ? p.notes : []);
   const commonNotes = [...new Set(allNotes)];
   const categories = [...new Set(purchasedPerfumes.map(p => p.category))];
-  
-  // Find similar perfumes
-  const similar = await Perfume.find({
-    _id: { $nin: purchasedPerfumes.map(p => p._id) },
-    stock: { $gt: 0 },
-    $or: [
-      { notes: { $in: commonNotes } },
-      { category: { $in: categories } }
-    ]
-  }).limit(4);
-  
+  const purchasedIds = purchasedPerfumes.map(p => p._id);
+  const similar = perfumes.filter(p =>
+    !purchasedIds.includes(p._id) &&
+    p.stock > 0 &&
+    (
+      (Array.isArray(p.notes) && p.notes.some(note => commonNotes.includes(note))) ||
+      (categories.includes(p.category))
+    )
+  ).slice(0, 4);
   return similar.map(perfume => ({
-    perfume: perfume.toObject(),
+    perfume,
     reason: 'Based on your purchase history',
     confidence: 85
   }));
