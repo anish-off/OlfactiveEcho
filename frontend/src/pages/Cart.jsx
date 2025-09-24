@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '@/context/CartContext';
+import OfferSummaryCard from '../components/cart/OfferSummaryCard';
+import useAdvancedDiscounts from '../hooks/useAdvancedDiscounts';
 
 const formatCurrency = (v) => `₹${(v ?? 0).toFixed(2)}`;
 
@@ -10,20 +12,31 @@ const Cart = () => {
     updateQuantity, 
     removeItem, 
     clearCart, 
-    subtotal, 
+    subtotal,
     sampleTotal, 
     grandTotal, 
     totalItems, 
     regularItems, 
     sampleItems, 
     isFreeEligible, 
-    freeThreshold 
+    freeThreshold
   } = useCart();
   
+  // Apply advanced discounts at component level
+  const cartItemsForDiscount = regularItems.map(item => ({
+    ...item.product,
+    quantity: item.quantity,
+    price: item.product?.price || 0
+  }));
+  
+  const { applicableOffers, totalSavings, freeItems } = useAdvancedDiscounts(cartItemsForDiscount, subtotal);
+  const discountedSubtotal = Math.max(0, subtotal - totalSavings);
+  const finalGrandTotal = discountedSubtotal + sampleTotal;
+  
   const taxRate = 0.12; // 12% tax
-  const tax = grandTotal * taxRate;
-  const shipping = grandTotal > 0 && grandTotal < 1000 ? 50 : 0; // ₹50 shipping if total < ₹1000
-  const total = grandTotal + tax + shipping;
+  const tax = finalGrandTotal * taxRate;
+  const shipping = finalGrandTotal > 0 && finalGrandTotal < 1000 ? 50 : 0; // ₹50 shipping if total < ₹1000
+  const total = finalGrandTotal + tax + shipping;
 
   if (!items.length) {
     return (
@@ -50,6 +63,16 @@ const Cart = () => {
           </div>
         </div>
       )}
+
+      {/* Discount Offers Section */}
+      <OfferSummaryCard 
+        cartItems={regularItems.map(item => ({
+          ...item.product,
+          quantity: item.quantity,
+          price: item.product.effectivePrice || item.product.price
+        }))} 
+        cartTotal={subtotal} 
+      />
 
       {/* Regular Products */}
       {regularItems.length > 0 && (
@@ -144,6 +167,16 @@ const Cart = () => {
         <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
         <div className="space-y-3 mb-6">
           <div className="flex justify-between"><span>Products Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
+          {totalSavings > 0 && (
+            <div className="flex justify-between text-green-600">
+              <span>Discount Savings</span>
+              <span>-{formatCurrency(totalSavings)}</span>
+            </div>
+          )}
+          <div className="flex justify-between font-medium">
+            <span>Discounted Subtotal</span>
+            <span>{formatCurrency(discountedSubtotal)}</span>
+          </div>
           {sampleTotal > 0 && (
             <div className="flex justify-between text-blue-700">
               <span>Samples Subtotal</span>

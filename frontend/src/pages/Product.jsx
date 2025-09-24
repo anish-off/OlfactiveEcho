@@ -153,7 +153,7 @@ const Product = () => {
       <div className="min-h-screen bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {loading && <div className="py-24 text-center text-gray-500">Loading product...</div>}
-      {error && !loading && <div className="py-24 text-center text-red-500">{error}</div>}
+      {error && !loading && <div className="py-24 text-center text-[#a06800]">{error}</div>}
       {!loading && !error && product && (
         <>
           {/* Breadcrumb */}
@@ -326,7 +326,7 @@ const Product = () => {
                 <li className="flex items-center">
                   <span className="w-1.5 h-1.5 bg-[#F2C84B] rounded-full mr-2"></span>
                   {currentPrice >= 2500 ? (
-                    <span className="text-green-600 font-medium">✓ FREE Shipping Applied!</span>
+                    <span className="text-[#c69a2d] font-medium">✓ FREE Shipping Applied!</span>
                   ) : (
                     `Add ₹${(2500 - currentPrice).toFixed(0)} for Free Shipping`
                   )}

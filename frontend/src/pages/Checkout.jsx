@@ -6,6 +6,7 @@ import api from '../api/api';
 import PaymentOptions from '../components/payment/PaymentOptions';
 import PaymentProcessor from '../components/payment/PaymentProcessor';
 import OrderReview from '../components/payment/OrderReview';
+import useAdvancedDiscounts from '../hooks/useAdvancedDiscounts';
 
 const formatCurrency = (v) => `₹${(v ?? 0).toFixed(2)}`;
 
@@ -136,9 +137,19 @@ const AddressForm = ({ address, setAddress, title, errors = {} }) => {
 };
 
 const Checkout = () => {
-  const { items, subtotal, totalItems, clearCart } = useCart();
+  const { items, subtotal, totalItems, clearCart, regularItems } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
+  
+  // Apply advanced discounts
+  const cartItemsForDiscount = regularItems?.map(item => ({
+    ...item.product,
+    quantity: item.quantity,
+    price: item.product?.price || 0
+  })) || [];
+  
+  const { applicableOffers, totalSavings, freeItems } = useAdvancedDiscounts(cartItemsForDiscount, subtotal || 0);
+  const discountedSubtotal = Math.max(0, (subtotal || 0) - totalSavings);
   
   const [shippingAddress, setShippingAddress] = useState({
     fullName: user?.name || '',
@@ -265,10 +276,10 @@ const Checkout = () => {
       }
       
       // Create order summary locally for review
-      const shipping = subtotal >= 1000 ? 0 : 50;
-      const tax = subtotal * 0.12;
+      const shipping = discountedSubtotal >= 1000 ? 0 : 50;
+      const tax = discountedSubtotal * 0.12;
       const samplePrice = selectedSample?.samplePrice || 0;
-      const total = subtotal + shipping + tax + samplePrice;
+      const total = discountedSubtotal + shipping + tax + samplePrice;
       
       const localOrderSummary = {
         items: validItems.map(item => ({
@@ -286,6 +297,9 @@ const Checkout = () => {
           name: selectedSample.name
         } : null,
         subtotal,
+        discountedSubtotal,
+        totalSavings,
+        applicableOffers,
         shipping,
         tax,
         total,
@@ -462,10 +476,10 @@ const Checkout = () => {
     return null;
   }
 
-  const shipping = orderSummary?.shipping || (subtotal >= 1000 ? 0 : 50);
-  const tax = orderSummary?.tax || (subtotal * 0.12);
+  const shipping = orderSummary?.shipping || (discountedSubtotal >= 1000 ? 0 : 50);
+  const tax = orderSummary?.tax || (discountedSubtotal * 0.12);
   const samplePrice = selectedSample?.samplePrice || 0;
-  const total = subtotal + shipping + tax + samplePrice;
+  const total = discountedSubtotal + shipping + tax + samplePrice;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -676,6 +690,19 @@ const Checkout = () => {
                   <span>{formatCurrency(subtotal)}</span>
                 </div>
                 
+                {totalSavings > 0 && (
+                  <>
+                    <div className="flex justify-between text-green-600">
+                      <span>Discount Savings</span>
+                      <span>-{formatCurrency(totalSavings)}</span>
+                    </div>
+                    <div className="flex justify-between font-medium border-t pt-2">
+                      <span>Discounted Subtotal</span>
+                      <span>{formatCurrency(discountedSubtotal)}</span>
+                    </div>
+                  </>
+                )}
+                
                 {selectedSample && (
                   <div className="flex justify-between">
                     <span>Sample</span>
@@ -707,10 +734,10 @@ const Checkout = () => {
                 </div>
               )}
               
-              {subtotal < 1000 && (
+              {discountedSubtotal < 1000 && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <p className="text-blue-600 text-sm">
-                    Add {formatCurrency(1000 - subtotal)} more for free shipping!
+                    Add {formatCurrency(1000 - discountedSubtotal)} more for free shipping!
                   </p>
                 </div>
               )}

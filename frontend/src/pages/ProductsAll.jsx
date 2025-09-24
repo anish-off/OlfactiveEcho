@@ -1,16 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import ProductCard from '@/components/product/ProductCard';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, Grid, List, X } from 'lucide-react';
-import { listPerfumes } from '@/api/perfume';
+import ProductCard from '../components/product/ProductCard';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Search, Filter, Grid, List, X, Zap } from 'lucide-react';
+import { listPerfumes } from '../api/perfume';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { useWishlist } from '@/context/WishlistContext';
-import { getImageWithFallbacks, getProxiedImageUrl } from '@/utils/imageUtils';
-import Footer from '@/components/Footer';
+import { useWishlist } from '../context/WishlistContext';
+import { getImageWithFallbacks, getProxiedImageUrl } from '../utils/imageUtils';
+import { addDiscountData, mockDiscountProducts } from '../utils/discountUtils';
+import Footer from '../components/Footer';
+import DiscountBanner from '../components/discount/DiscountBanner';
+import DiscountProductSection from '../components/discount/DiscountProductSection';
 
 const ProductsAll = () => {
   const [searchParams] = useSearchParams();
@@ -26,6 +29,7 @@ const ProductsAll = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedGender, setSelectedGender] = useState('all');
   const [selectedFragranceFamily, setSelectedFragranceFamily] = useState('all');
+  const [priceRange, setPriceRange] = useState([0, 10000]); // Default price range
 
   // Get filter parameters from URL
   const genderFilter = searchParams.get('gender');
@@ -62,7 +66,12 @@ const ProductsAll = () => {
         console.log('Fetched perfumes:', perfumesArray.length, 'perfumes');
         console.log('First perfume:', perfumesArray[0]);
         
-        setPerfumes(perfumesArray);
+        // Add discount data to perfumes
+        const perfumesWithDiscounts = addDiscountData(perfumesArray);
+        console.log('Perfumes with discounts:', perfumesWithDiscounts.length);
+        console.log('Sample perfume with discount:', perfumesWithDiscounts.find(p => p.discountType));
+        
+        setPerfumes(perfumesWithDiscounts);
       } catch (err) {
         console.error('Error fetching perfumes:', err);
         setError('Failed to load perfumes');
@@ -177,6 +186,14 @@ const ProductsAll = () => {
       });
     }
 
+    // Apply price range filter
+    if (priceRange && priceRange.length === 2) {
+      filtered = filtered.filter(p => {
+        const price = p.salePrice || p.price || 0;
+        return price >= priceRange[0] && price <= priceRange[1];
+      });
+    }
+
     // Apply search term filter
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
@@ -208,7 +225,26 @@ const ProductsAll = () => {
     });
 
     return filtered;
-  }, [perfumes, selectedCategory, selectedGender, selectedFragranceFamily, genderFilter, familyFilter, brandFilter, searchTerm, sortBy]);
+  }, [perfumes, selectedCategory, selectedGender, selectedFragranceFamily, genderFilter, familyFilter, brandFilter, searchTerm, sortBy, priceRange]);
+
+  // Prepare discount products
+  const flashSaleProducts = useMemo(() => {
+    const flashProducts = filteredPerfumes.filter(perfume => 
+      perfume.discountType === 'flash' && perfume.discountPercentage >= 50
+    ).slice(0, 8);
+    console.log('Flash sale products found:', flashProducts.length);
+    console.log('Sample flash product:', flashProducts[0]);
+    return flashProducts;
+  }, [filteredPerfumes]);
+
+  const seasonalProducts = useMemo(() => {
+    const seasonProducts = filteredPerfumes.filter(perfume => 
+      perfume.discountType === 'seasonal' && perfume.discountPercentage >= 20
+    ).slice(0, 6);
+    console.log('Seasonal products found:', seasonProducts.length);
+    console.log('Sample seasonal product:', seasonProducts[0]);
+    return seasonProducts;
+  }, [filteredPerfumes]);
 
   // Update page title based on filters
   const getPageTitle = () => {
@@ -253,15 +289,27 @@ const ProductsAll = () => {
     setSelectedGender('all');
     setSelectedFragranceFamily('all');
     setSearchTerm('');
+    setPriceRange([0, 10000]);
   };
 
-  const hasActiveFilters = selectedCategory !== 'all' || selectedGender !== 'all' || selectedFragranceFamily !== 'all' || searchTerm.trim() !== '';
+  const hasActiveFilters = selectedCategory !== 'all' || selectedGender !== 'all' || selectedFragranceFamily !== 'all' || searchTerm.trim() !== '' || (priceRange[0] !== 0 || priceRange[1] !== 10000);
 
   return (
     <>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16">
+        {/* Compact Discount Banner */}
+        <div className="mb-6">
+          <DiscountBanner
+            title="Great Fragrance Festival"
+            subtitle="Up to 70% OFF + Extra 10% OFF on Premium Perfumes"
+            endDate={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)} // 7 days from now
+            theme="sale"
+            compact={true}
+          />
+        </div>
+
         {/* Hero Section */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
             {getPageTitle()}
             {!genderFilter && !familyFilter && !brandFilter && (
@@ -275,7 +323,7 @@ const ProductsAll = () => {
           {/* Show filter indicator if filters are applied */}
           {(genderFilter || familyFilter || brandFilter) && (
             <div className="mt-4 flex justify-center">
-              <div className="inline-flex items-center px-4 py-2 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
+              <div className="inline-flex items-center px-4 py-2 bg-[#c69a2d]/10 text-[#c69a2d] rounded-full text-sm font-medium">
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
@@ -285,117 +333,230 @@ const ProductsAll = () => {
           )}
         </div>
 
-        {/* Modern Filter Section */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6">
-            <div className="flex items-center gap-3 mb-4 lg:mb-0">
-              <Filter className="h-5 w-5 text-amber-600" />
-              <h3 className="text-lg font-semibold text-gray-900">Filter & Search</h3>
-              {hasActiveFilters && (
-                <span className="bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                  {filteredPerfumes.length} results
-                </span>
-              )}
-            </div>
-            {hasActiveFilters && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={clearAllFilters}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
-              >
-                <X className="h-4 w-4" />
-                Clear all filters
-              </Button>
-            )}
-          </div>
-
-          {/* Search Bar */}
-          <div className="mb-6">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <Input
-                type="text"
-                placeholder="Search fragrances by name or brand..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={handleSearch}
-                className="pl-12 pr-4 py-3 text-lg border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          {/* Filter Pills */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Gender Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">Gender</label>
-              <div className="flex flex-wrap gap-2">
-                {genders.map(gender => (
-                  <button
-                    key={gender.id}
-                    onClick={() => setSelectedGender(gender.id)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      selectedGender === gender.id
-                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md transform scale-105'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-sm'
-                    }`}
-                  >
-                    {gender.name}
-                    <span className="ml-1 text-xs opacity-75">({gender.count})</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Fragrance Family Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">Fragrance Family</label>
-              <div className="flex flex-wrap gap-2">
-                {fragranceFamilies.slice(0, 6).map(family => (
-                  <button
-                    key={family.id}
-                    onClick={() => setSelectedFragranceFamily(family.id)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      selectedFragranceFamily === family.id
-                        ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md transform scale-105'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-sm'
-                    }`}
-                  >
-                    {family.name}
-                    <span className="ml-1 text-xs opacity-75">({family.count})</span>
-                  </button>
-                ))}
-              </div>
-              {fragranceFamilies.length > 7 && (
-                <div className="mt-2 text-xs text-gray-500">
-                  +{fragranceFamilies.length - 6} more families available
+        {/* Main Layout with Sidebar */}
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Left Sidebar - Filters */}
+          <div className="lg:w-80 lg:flex-shrink-0">
+            <div className="sticky top-6 space-y-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
+              {/* Search Section */}
+              <div className="bg-white rounded-2xl shadow-sm p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Search className="h-5 w-5 text-[#c69a2d]" />
+                  Search
+                </h3>
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <Input
+                    type="text"
+                    placeholder="Search fragrances..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyPress={handleSearch}
+                    className="pl-12 pr-4 py-3 border-gray-200 rounded-xl focus:ring-2 focus:ring-[#c69a2d] focus:border-transparent"
+                  />
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* Category Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">Category</label>
-              <div className="flex flex-wrap gap-2">
-                {categories.slice(0, 4).map(category => (
-                  <button
-                    key={category.id}
-                    onClick={() => setSelectedCategory(category.id)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      selectedCategory === category.id
-                        ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md transform scale-105'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-sm'
-                    }`}
-                  >
-                    {category.name}
-                    <span className="ml-1 text-xs opacity-75">({category.count})</span>
-                  </button>
-                ))}
+              {/* Filters Section */}
+              <div className="bg-white rounded-2xl shadow-sm p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Filter className="h-5 w-5 text-[#c69a2d]" />
+                    Filters
+                  </h3>
+                  {hasActiveFilters && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={clearAllFilters}
+                      className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+                    >
+                      <X className="h-3 w-3" />
+                      Clear
+                    </Button>
+                  )}
+                </div>
+
+                {/* Active Filters Count */}
+                {hasActiveFilters && (
+                  <div className="mb-4">
+                    <span className="bg-[#c69a2d]/10 text-[#c69a2d] text-xs font-medium px-3 py-1 rounded-full">
+                      {filteredPerfumes.length} results
+                    </span>
+                  </div>
+                )}
+
+                {/* Gender Filter */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-900 mb-3">Gender</label>
+                  <div className="space-y-2 max-h-[180px] overflow-y-auto filter-scrollbar">
+                    {genders.map(gender => (
+                      <button
+                        key={gender.id}
+                        onClick={() => setSelectedGender(gender.id)}
+                        className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-between ${
+                          selectedGender === gender.id
+                            ? 'bg-gradient-to-r from-[#c69a2d] to-[#b8860b] text-white shadow-md'
+                            : 'bg-gray-50 text-gray-700 hover:bg-[#c69a2d]/5 hover:shadow-sm'
+                        }`}
+                      >
+                        <span>{gender.name}</span>
+                        <span className="text-xs opacity-75">({gender.count})</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Fragrance Family Filter */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-900 mb-3">Fragrance Family</label>
+                  <div className="space-y-2 max-h-[180px] overflow-y-auto filter-scrollbar">
+                    {fragranceFamilies.map(family => (
+                      <button
+                        key={family.id}
+                        onClick={() => setSelectedFragranceFamily(family.id)}
+                        className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-between ${
+                          selectedFragranceFamily === family.id
+                            ? 'bg-gradient-to-r from-[#c69a2d] to-[#b8860b] text-white shadow-md'
+                            : 'bg-gray-50 text-gray-700 hover:bg-[#c69a2d]/5 hover:shadow-sm'
+                        }`}
+                      >
+                        <span>{family.name}</span>
+                        <span className="text-xs opacity-75">({family.count})</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Category Filter */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-900 mb-3">Category</label>
+                  <div className="space-y-2 max-h-[180px] overflow-y-auto filter-scrollbar">
+                    {categories.map(category => (
+                      <button
+                        key={category.id}
+                        onClick={() => setSelectedCategory(category.id)}
+                        className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-between ${
+                          selectedCategory === category.id
+                            ? 'bg-gradient-to-r from-[#c69a2d] to-[#b8860b] text-white shadow-md'
+                            : 'bg-gray-50 text-gray-700 hover:bg-[#c69a2d]/5 hover:shadow-sm'
+                        }`}
+                      >
+                        <span>{category.name}</span>
+                        <span className="text-xs opacity-75">({category.count})</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Price Range Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-3">Price Range</label>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1">
+                        <Input
+                          type="number"
+                          placeholder="Min"
+                          value={priceRange[0]}
+                          onChange={(e) => setPriceRange([parseInt(e.target.value) || 0, priceRange[1]])}
+                          className="text-sm"
+                        />
+                      </div>
+                      <span className="text-gray-500">-</span>
+                      <div className="flex-1">
+                        <Input
+                          type="number"
+                          placeholder="Max"
+                          value={priceRange[1]}
+                          onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value) || 10000])}
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Price Range Presets */}
+                    <div className="space-y-2">
+                      {[
+                        { label: 'Under ₹1,000', range: [0, 1000] },
+                        { label: '₹1,000 - ₹3,000', range: [1000, 3000] },
+                        { label: '₹3,000 - ₹5,000', range: [3000, 5000] },
+                        { label: '₹5,000 - ₹10,000', range: [5000, 10000] },
+                        { label: 'Above ₹10,000', range: [10000, 50000] }
+                      ].map(preset => (
+                        <button
+                          key={preset.label}
+                          onClick={() => setPriceRange(preset.range)}
+                          className={`w-full text-left px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                            priceRange[0] === preset.range[0] && priceRange[1] === preset.range[1]
+                              ? 'bg-gradient-to-r from-[#c69a2d] to-[#b8860b] text-white shadow-md'
+                              : 'bg-gray-50 text-gray-700 hover:bg-[#c69a2d]/5 hover:shadow-sm'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+
+          {/* Right Content Area */}
+          <div className="flex-1 min-w-0">
+            {/* Featured Discount Sections */}
+            {(flashSaleProducts.length > 0 || seasonalProducts.length > 0) && (
+              <div className="relative mb-12">
+                {/* Section Header */}
+                <div className="text-center mb-8">
+                  <div className="inline-flex items-center gap-3 bg-gradient-to-r from-[#c69a2d]/10 to-[#b8860b]/10 px-6 py-3 rounded-full border border-[#c69a2d]/30">
+                    <Zap className="h-5 w-5 text-[#c69a2d]" />
+                    <h2 className="text-xl font-bold text-gray-900">Special Offers</h2>
+                    <Zap className="h-5 w-5 text-[#c69a2d]" />
+                  </div>
+                </div>
+
+                <div className="grid gap-8 lg:gap-12">
+                  {/* Flash Sale Section */}
+                  {flashSaleProducts.length > 0 && (
+                    <DiscountProductSection
+                      title="⚡ Flash Sale"
+                      subtitle="Limited time - up to 70% off on selected fragrances!"
+                      products={flashSaleProducts}
+                      saleEndTime={new Date(Date.now() + 6 * 60 * 60 * 1000)} // 6 hours from now
+                      theme="flash"
+                      showTimer={true}
+                      maxVisible={4}
+                    />
+                  )}
+
+                  {/* Seasonal Sale Section */}
+                  {seasonalProducts.length > 0 && (
+                    <DiscountProductSection
+                      title="🌸 Seasonal Collection"
+                      subtitle="Special prices on seasonal favorites"
+                      products={seasonalProducts}
+                      theme="seasonal"
+                      showTimer={false}
+                      maxVisible={3}
+                    />
+                  )}
+                </div>
+
+                {/* Section Divider */}
+                <div className="mt-12 relative">
+                  <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative flex justify-center">
+                    <span className="bg-white px-6 py-2 text-sm text-gray-500 rounded-full border border-gray-300">
+                      Browse All Products
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
         {/* Sort and View Controls */}
         <div className="bg-white rounded-xl shadow-sm p-4 mb-8">
@@ -446,11 +607,11 @@ const ProductsAll = () => {
 
         {/* Status */}
         {loading && <div className="text-center py-8">Loading...</div>}
-        {error && !loading && <div className="text-center py-8 text-red-500">{error}</div>}
+        {error && !loading && <div className="text-center py-8 text-[#a06800]">{error}</div>}
 
         {/* Products Grid */}
         {!loading && !error && (
-          <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8' : 'space-y-4'}>
+          <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6' : 'space-y-4'}>
             {filteredPerfumes.map(perfume => (
               <motion.div
                 key={perfume._id}
@@ -479,7 +640,7 @@ const ProductsAll = () => {
                   <button
                     onClick={(e) => toggleFavorite(e, perfume._id)}
                     aria-label={has(perfume._id) ? 'Remove from wishlist' : 'Add to wishlist'}
-                    className={`inline-flex items-center justify-center h-10 w-10 absolute top-4 right-4 z-10 rounded-full backdrop-blur-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 bg-white/30 hover:bg-white/40 ${has(perfume._id) ? 'text-red-500' : 'text-white'}`}
+                    className={`inline-flex items-center justify-center h-10 w-10 absolute top-4 right-4 z-10 rounded-full backdrop-blur-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 bg-white/30 hover:bg-white/40 ${has(perfume._id) ? 'text-[#c69a2d]' : 'text-white'}`}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -498,18 +659,18 @@ const ProductsAll = () => {
 
                 <div className={`p-6 ${viewMode === 'list' ? 'flex-1' : ''}`}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-[#8C501B] bg-yellow-100 px-2 py-1 rounded-full uppercase tracking-wide">
+                    <span className="text-xs font-medium text-[#c69a2d] bg-[#c69a2d]/10 px-2 py-1 rounded-full uppercase tracking-wide">
                       {perfume.category}
                     </span>
                     <div className="flex items-center space-x-1">
                       {perfume.samplesAvailable !== false && (
-                        <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                        <span className="text-xs font-medium text-[#c69a2d] bg-[#c69a2d]/10 px-2 py-1 rounded-full">
                           Sample Available
                         </span>
                       )}
                     </div>
                   </div>
-                  <h3 className="font-bold text-lg text-gray-900 mb-1 group-hover:text-[#BF7C2A] transition-colors">
+                  <h3 className="font-bold text-lg text-gray-900 mb-1 group-hover:text-[#c69a2d] transition-colors">
                     {cleanPerfumeName(perfume.name)}
                   </h3>
                   <p className="text-gray-600 text-sm mb-3">{(typeof perfume.brand === 'object' ? perfume.brand?.name : perfume.brand) || 'Olfactive Echo'}</p>
@@ -554,6 +715,8 @@ const ProductsAll = () => {
             Get Personalized Advice
           </button>
         </div>
+          </div> {/* End Right Content Area */}
+        </div> {/* End Main Layout with Sidebar */}
       </div>
       <Footer />
     </>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Home from './pages/Home';
 import Products from './pages/Products';
@@ -36,12 +36,22 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminLogin from './pages/AdminLogin';
 import UserOnlyRoute from './components/UserOnlyRoute';
 
+// Import Advanced Offer Components
+import AdvancedOffersBanner from './components/discount/AdvancedOffersBanner';
+import OfferNotificationPanel from './components/discount/OfferNotificationPanel';
+
 const AppContent = () => {
   const { isLoggedIn, user } = useAuth();
+  const location = useLocation();
+  
   return (
     <>
       <ScrollToTop />
       <NavbarWrapper />
+      
+      {/* Advanced Offers Banner - Show on main pages only */}
+      {location.pathname === '/' && <AdvancedOffersBanner isCompact={true} showAll={false} />}
+      
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={isLoggedIn ? (user?.role === 'admin' ? <Navigate to="/admin/dashboard" /> : <Navigate to="/" />) : <Login />} />
@@ -80,6 +90,9 @@ const AppContent = () => {
 
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      
+      {/* Floating Offer Notification Panel - Show on all user pages */}
+      {isLoggedIn && user?.role !== 'admin' && <OfferNotificationPanel />}
     </>
   );
 };

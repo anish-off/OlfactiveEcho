@@ -101,7 +101,7 @@ const Shop = () => {
         <div className="text-center">
           <Link
             to="/collections"
-            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 transition-colors"
+            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-[#c69a2d] hover:bg-[#b8860b] transition-colors"
           >
             View All Products
           </Link>

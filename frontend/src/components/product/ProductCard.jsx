@@ -7,6 +7,7 @@ import { Heart, ShoppingCart, HeartOff, Star, Package } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { getImageWithFallbacks, getProxiedImageUrl } from '@/utils/imageUtils';
+import { ProductDiscountBadge } from '@/components/discount/DiscountBadge';
 
 const ProductCard = ({ 
   _id, 
@@ -15,6 +16,10 @@ const ProductCard = ({
   brand,
   description, 
   price, 
+  originalPrice, // Add originalPrice prop for discount calculations
+  salePrice, // Add salePrice prop
+  discount, // Add discount prop
+  saleType, // Add saleType prop (flash, seasonal, premium, regular)
   imageUrl, 
   image_url, 
   image, 
@@ -34,7 +39,6 @@ const ProductCard = ({
   const pid = _id || id;
   const wished = has(pid);
 
-  // Handle both old and new note formats
   const getAllNotes = () => {
     if (!notes) return [];
     if (Array.isArray(notes)) return notes; // Legacy format
@@ -59,6 +63,8 @@ const ProductCard = ({
   const displayNotes = getAllNotes();
   const displayImage = getProxiedImageUrl(getImageWithFallbacks({ image_url, imageUrl, image, name }));
   const displayBrand = typeof brand === 'object' ? brand?.name : brand;
+  const finalPrice = salePrice || price;
+  const showDiscount = originalPrice && originalPrice > finalPrice;
 
   return (
     <Card 
@@ -76,20 +82,30 @@ const ProductCard = ({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
         
-        {/* Badges */}
+        {/* Discount Badge */}
+        {(showDiscount || discount) && (
+          <ProductDiscountBadge
+            discount={discount}
+            originalPrice={originalPrice || price}
+            salePrice={salePrice}
+            saleType={saleType || "regular"}
+          />
+        )}
+        
+        {/* Other Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
           {isNew && (
-            <span className="px-2 py-1 bg-green-500 text-white text-xs font-medium rounded">
+            <span className="px-2 py-1 bg-[#c69a2d] text-white text-xs font-medium rounded">
               New
             </span>
           )}
-          {isPopular && (
-            <span className="px-2 py-1 bg-amber-500 text-white text-xs font-medium rounded">
+          {isPopular && !showDiscount && !discount && (
+            <span className="px-2 py-1 bg-[#b8860b] text-white text-xs font-medium rounded">
               Popular
             </span>
           )}
           {stock <= 5 && stock > 0 && (
-            <span className="px-2 py-1 bg-red-500 text-white text-xs font-medium rounded">
+            <span className="px-2 py-1 bg-[#a06800] text-white text-xs font-medium rounded">
               Low Stock
             </span>
           )}
@@ -107,7 +123,7 @@ const ProductCard = ({
             toggle(pid); 
             toast.success(wished? 'Removed from wishlist':'Added to wishlist'); 
           }}
-          className={`absolute top-2 right-2 z-10 rounded-full backdrop-blur-sm transition-colors duration-300 ${wished? 'bg-red-500 text-white hover:bg-red-600':'bg-white/30 text-white hover:bg-white/40'}`}
+          className={`absolute top-2 right-2 z-10 rounded-full backdrop-blur-sm transition-colors duration-300 ${wished? 'bg-[#c69a2d] text-white hover:bg-[#b8860b]':'bg-white/30 text-white hover:bg-white/40'}`}
         >
           {wished ? <HeartOff className="h-5 w-5" /> : <Heart className="h-5 w-5" />}
         </Button>
@@ -135,17 +151,17 @@ const ProductCard = ({
         {/* Scent Family & Intensity */}
         <div className="flex flex-wrap gap-1 mb-3">
           {scentFamily && (
-            <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-1 rounded-full capitalize">
+            <span className="text-xs font-medium bg-[#c69a2d]/10 text-[#c69a2d] px-2 py-1 rounded-full capitalize">
               {scentFamily}
             </span>
           )}
           {intensity && (
-            <span className="text-xs font-medium bg-green-100 text-green-700 px-2 py-1 rounded-full capitalize">
+            <span className="text-xs font-medium bg-[#b8860b]/10 text-[#b8860b] px-2 py-1 rounded-full capitalize">
               {intensity}
             </span>
           )}
           {concentration && (
-            <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+            <span className="text-xs font-medium bg-[#a06800]/10 text-[#a06800] px-2 py-1 rounded-full">
               {concentration}
             </span>
           )}
@@ -168,11 +184,18 @@ const ProductCard = ({
 
       <CardContent className="p-4 pt-0">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xl font-bold text-primary">₹{price?.toLocaleString()}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xl font-bold text-primary">₹{finalPrice?.toLocaleString()}</span>
+            {showDiscount && (
+              <span className="text-sm text-gray-500 line-through">
+                ₹{originalPrice?.toLocaleString()}
+              </span>
+            )}
+          </div>
           {stock <= 0 ? (
-            <span className="text-sm text-red-500 font-medium">Out of Stock</span>
+            <span className="text-sm text-[#a06800] font-medium">Out of Stock</span>
           ) : (
-            <span className="text-sm text-green-600">{stock} in stock</span>
+            <span className="text-sm text-[#c69a2d]">{stock} in stock</span>
           )}
         </div>
         
@@ -188,7 +211,7 @@ const ProductCard = ({
                 _id: pid, 
                 name, 
                 brand: displayBrand,
-                price, 
+                price: finalPrice, 
                 imageUrl: displayImage, 
                 notes: displayNotes, 
                 description,

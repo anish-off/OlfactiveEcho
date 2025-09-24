@@ -40,10 +40,10 @@ const WishlistPage = () => {
               <h3 className="font-medium">{item.name}</h3>
               <p className="text-amber-600 font-bold mt-1">₹{item.price}</p>
               <div className="flex gap-2 mt-3">
-                <button onClick={()=> { addItem(item, 1); toast.success('Added to cart'); }} className="flex-1 bg-amber-600 text-white py-2 rounded text-sm flex items-center justify-center gap-1">
+                <button onClick={()=> { addItem(item, 1); toast.success('Added to cart'); }} className="flex-1 bg-[#c69a2d] text-white py-2 rounded text-sm flex items-center justify-center gap-1">
                   <ShoppingBag size={16} /> Add to Cart
                 </button>
-    <button onClick={()=> { remove(pid); toast.success('Removed'); }} className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-red-500">
+    <button onClick={()=> { remove(pid); toast.success('Removed'); }} className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-[#a06800]">
                   <X size={16} />
                 </button>
               </div>
@@ -53,7 +53,7 @@ const WishlistPage = () => {
       </div>
       {items.length > 0 && (
         <div className="mt-6 text-right">
-          <button onClick={()=>{ clear(); toast.success('Wishlist cleared'); }} className="text-sm text-red-600 hover:text-red-700">Clear wishlist</button>
+          <button onClick={()=>{ clear(); toast.success('Wishlist cleared'); }} className="text-sm text-[#a06800] hover:text-[#8b5a00]">Clear wishlist</button>
         </div>
       )}
     </div>

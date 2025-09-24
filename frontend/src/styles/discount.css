@@ -1,0 +1,159 @@
+/* Discount Component Styles */
+
+/* Keyframe Animations */
+@keyframes flash-pulse {
+  0%, 100% { 
+    opacity: 1; 
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.8; 
+    transform: scale(1.05);
+  }
+}
+
+@keyframes sale-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(239, 68, 68, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), 0 0 30px rgba(239, 68, 68, 0.6);
+  }
+}
+
+@keyframes countdown-pulse {
+  0%, 100% { 
+    transform: scale(1); 
+  }
+  50% { 
+    transform: scale(1.02); 
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+  20%, 40%, 60%, 80% { transform: translateX(2px); }
+}
+
+@keyframes percentage-count {
+  from { 
+    opacity: 0; 
+    transform: translateY(20px) scale(0.8); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
+}
+
+/* Discount Animation Classes */
+.flash-sale-badge {
+  animation: flash-pulse 2s ease-in-out infinite;
+}
+
+.sale-badge {
+  animation: sale-glow 3s ease-in-out infinite;
+}
+
+.countdown-timer {
+  animation: countdown-pulse 1.5s ease-in-out infinite;
+}
+
+.urgent-sale {
+  animation: shake 0.5s ease-in-out;
+}
+
+.percentage-animation {
+  animation: percentage-count 0.6s ease-out;
+}
+
+/* Discount Badge Hover Effects */
+.discount-badge:hover {
+  transform: scale(1.1);
+  transition: transform 0.2s ease-in-out;
+}
+
+/* Product Card Discount Overlay */
+.discount-overlay {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.9) 100%);
+  backdrop-filter: blur(4px);
+}
+
+/* Gradient text for sale titles */
+.sale-gradient-text {
+  background: linear-gradient(135deg, #ef4444, #dc2626, #f97316);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Banner Specific Styles */
+.discount-banner {
+  position: relative;
+  overflow: hidden;
+}
+
+.discount-banner::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+  background-size: 30px 30px;
+  animation: float 20s ease-in-out infinite;
+  opacity: 0.3;
+}
+
+@keyframes float {
+  0%, 100% { transform: rotate(0deg) translateX(0px); }
+  50% { transform: rotate(180deg) translateX(20px); }
+}
+
+/* Timer Display */
+.timer-digit {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  text-align: center;
+}
+
+/* Product Card Enhancements */
+.product-card-discount {
+  position: relative;
+}
+
+.product-card-discount::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 30%, rgba(255,215,0,0.1) 50%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.product-card-discount:hover::after {
+  opacity: 1;
+  animation: shimmer 1s ease-out;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .discount-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  .timer-digit {
+    font-size: 0.875rem;
+  }
+}
