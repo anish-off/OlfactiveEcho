@@ -43,13 +43,13 @@ const AppContent = () => {
       <NavbarWrapper />
       <Routes>
         {/* Public routes */}
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={isLoggedIn ? <Navigate to="/" /> : <Login />} />
         <Route path="/register" element={isLoggedIn ? <Navigate to="/" /> : <Register />} />
         <Route path="/" element={<Home />} />
         <Route path="/products" element={<Products />} />
         <Route path="/product/:id" element={<Product />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password/:token" element={<ResetPassword />} /> 
+        <Route path="/forgot-password" element={isLoggedIn ? <Navigate to="/" /> : <ForgotPassword />} />
+        <Route path="/reset-password/:token" element={isLoggedIn ? <Navigate to="/" /> : <ResetPassword />} /> 
         <Route path="/samples" element={<Samples />} /> 
         <Route path="/shop" element={<Shop />} />
         <Route path="/about" element={<AboutUsPage />} /> 
