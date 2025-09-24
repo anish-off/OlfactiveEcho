@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
-  const { isLoggedIn, user } = useAuth();
+  const { isLoggedIn, user, loading } = useAuth();
   const navigate = useNavigate();
   const brandName = "OLFACTIVE ECHO";
 
@@ -15,6 +15,7 @@ const Login = () => {
     // Debug logs removed for production
     
     // Only redirect if user is already logged in when visiting login page
+    if (loading) return; // wait until auth resolves to avoid flicker
     if (isLoggedIn && user) {
       // User already logged in, redirecting...
       if (user.role === 'admin') {
@@ -25,7 +26,15 @@ const Login = () => {
         navigate('/products', { replace: true });
       }
     }
-  }, [isLoggedIn, user, navigate]);
+  }, [isLoggedIn, user, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-background overflow-hidden isolate">

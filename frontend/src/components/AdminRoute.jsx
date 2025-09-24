@@ -1,16 +1,25 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const AdminRoute = ({ children }) => {
-  const { isLoggedIn, user } = useAuth();
+  const { isLoggedIn, user, loading } = useAuth();
+  const location = useLocation();
 
   // Debug logs removed for production
 
   // Check if user is logged in and has admin role
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
   if (!isLoggedIn) {
-    // Redirecting to login
-    return <Navigate to="/login" replace />;
+    // Redirecting to login only after auth state is known. Preserve attempted path.
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   if (!user || user.role !== 'admin') {

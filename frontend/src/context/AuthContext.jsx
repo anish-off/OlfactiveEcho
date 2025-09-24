@@ -9,15 +9,34 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Try to fetch current user if token exists
+    // On app start, rehydrate auth state from storage and validate token
     const token = localStorage.getItem('token');
-    if (!token) { setLoading(false); return; }
+    if (!token) {
+      // No token => ensure cached user is cleared
+      localStorage.removeItem('user');
+      setLoading(false);
+      return;
+    }
+
+    // Optimistically set cached user to avoid UI flicker while validating
+    const cached = localStorage.getItem('user');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === 'object') setUser(parsed);
+      } catch {}
+    }
+
     (async () => {
       try {
         const { user: me } = await fetchMe();
         setUser(me);
+        localStorage.setItem('user', JSON.stringify(me));
       } catch (e) {
+        // Token invalid or network error
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -26,21 +45,13 @@ export const AuthProvider = ({ children }) => {
 
   const login = async ({ email, password }) => {
     if (!email || !password) throw new Error('Missing credentials');
-    console.log('=== FRONTEND LOGIN DEBUG ===');
-    console.log('Attempting login for:', email);
-    
     const data = await apiLogin({ email, password });
-    console.log('Login API response:', data);
-    console.log('User data from API:', data.user);
-    
     // Ensure user data is valid before setting state
     if (!data.user || !data.user.id) {
       throw new Error('Invalid user data received from server');
     }
-    
     setUser(data.user);
-    console.log('User state updated to:', data.user);
-    
+    localStorage.setItem('user', JSON.stringify(data.user));
     return data.user;
   };
 
@@ -54,12 +65,14 @@ export const AuthProvider = ({ children }) => {
       data = await apiRegister({ name, email, password });
     }
     setUser(data.user);
+    localStorage.setItem('user', JSON.stringify(data.user));
     return data.user;
   };
 
   const logout = () => {
     apiLogout();
     setUser(null);
+    localStorage.removeItem('user');
     toast.success('Logged out');
   };
 
