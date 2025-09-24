@@ -33,10 +33,10 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import ScrollToTop from './components/ScrollToTop';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminLogin from './pages/AdminLogin';
 
 const AppContent = () => {
   const { isLoggedIn } = useAuth();
-
   return (
     <>
       <ScrollToTop />
@@ -44,6 +44,7 @@ const AppContent = () => {
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={isLoggedIn ? <Navigate to="/" /> : <Login />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/register" element={isLoggedIn ? <Navigate to="/" /> : <Register />} />
         <Route path="/" element={<Home />} />
         <Route path="/products" element={<Products />} />

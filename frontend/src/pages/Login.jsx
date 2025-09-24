@@ -12,19 +12,12 @@ const Login = () => {
   useEffect(() => {
     // Disable automatic redirect from Login page to prevent conflicts
     // Navigation is now handled directly in LoginForm component
-    // Debug logs removed for production
     
     // Only redirect if user is already logged in when visiting login page
     if (loading) return; // wait until auth resolves to avoid flicker
     if (isLoggedIn && user) {
-      // User already logged in, redirecting...
-      if (user.role === 'admin') {
-        // Redirecting existing admin to dashboard
-        navigate('/admin', { replace: true });
-      } else {
-        // Redirecting existing user to products
-        navigate('/products', { replace: true });
-      }
+      // User already logged in, redirecting to products
+      navigate('/products', { replace: true });
     }
   }, [isLoggedIn, user, loading, navigate]);
 
