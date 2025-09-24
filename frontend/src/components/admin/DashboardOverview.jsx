@@ -3,9 +3,7 @@ import {
   CurrencyRupeeIcon,
   ShoppingBagIcon,
   UsersIcon,
-  ClipboardDocumentListIcon,
-  ArrowUpIcon,
-  ArrowDownIcon
+  ClipboardDocumentListIcon
 } from '@heroicons/react/24/outline';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -125,7 +123,7 @@ const DashboardOverview = () => {
   const hasRecentOrders = (stats?.recentOrders?.length || 0) > 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -135,28 +133,16 @@ const DashboardOverview = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((stat) => (
-          <div key={stat.name} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div key={stat.name} className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
             <div className="flex items-center">
               <div className={`${stat.color} p-3 rounded-lg`}>
                 <stat.icon className="h-6 w-6 text-white" />
               </div>
               <div className="ml-4 flex-1">
                 <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-                <div className="flex items-center">
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                  <div className={`ml-2 flex items-center text-sm ${
-                    stat.changeType === 'increase' ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {stat.changeType === 'increase' ? (
-                      <ArrowUpIcon className="h-4 w-4 mr-1" />
-                    ) : (
-                      <ArrowDownIcon className="h-4 w-4 mr-1" />
-                    )}
-                    {stat.change}
-                  </div>
-                </div>
+                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
               </div>
             </div>
           </div>
@@ -164,11 +150,11 @@ const DashboardOverview = () => {
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Sales Chart */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Sales Over Time</h3>
-          <div className="h-80">
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={salesData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -185,9 +171,9 @@ const DashboardOverview = () => {
         </div>
 
         {/* Order Status Chart */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Status Distribution</h3>
-          <div className="h-80">
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -213,10 +199,10 @@ const DashboardOverview = () => {
 
       {/* Recent Activity (only when data is available) */}
       {(hasTopProducts || hasRecentOrders) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Top Products */}
           {hasTopProducts && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Selling Products</h3>
               <div className="space-y-4">
                 {stats?.topProducts?.slice(0, 5).map((product) => (
@@ -244,7 +230,7 @@ const DashboardOverview = () => {
 
           {/* Recent Orders */}
           {hasRecentOrders && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Orders</h3>
               <div className="space-y-4">
                 {stats?.recentOrders?.slice(0, 5).map((order) => (
