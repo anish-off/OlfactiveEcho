@@ -13,6 +13,7 @@ import Checkout from './pages/Checkout'; // New Import
 import Community from './pages/Community'; // New Import
 import Dashboard from './pages/Dashboard'; // New Import
 import ForgotPassword from './pages/ForgotPassword'; // New Import
+import ResetPassword from './pages/ResetPassword'; // New Import
 import NewPost from './pages/NewPost'; // New Import
 import PostDetail from './pages/PostDetail'; // New Import
 import Profile from './pages/Profile'; // Already used, but for clarity
@@ -47,7 +48,8 @@ const AppContent = () => {
         <Route path="/" element={<Home />} />
         <Route path="/products" element={<Products />} />
         <Route path="/product/:id" element={<Product />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} /> 
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} /> 
         <Route path="/samples" element={<Samples />} /> 
         <Route path="/shop" element={<Shop />} />
         <Route path="/about" element={<AboutUsPage />} /> 

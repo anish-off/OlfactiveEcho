@@ -8,6 +8,16 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const persistUser = (userData) => {
+    if (userData) {
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+    } else {
+      setUser(null);
+      localStorage.removeItem('user');
+    }
+  };
+
   useEffect(() => {
     // On app start, rehydrate auth state from storage and validate token
     const token = localStorage.getItem('token');
@@ -30,13 +40,11 @@ export const AuthProvider = ({ children }) => {
     (async () => {
       try {
         const { user: me } = await fetchMe();
-        setUser(me);
-        localStorage.setItem('user', JSON.stringify(me));
+        persistUser(me);
       } catch (e) {
         // Token invalid or network error
         localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setUser(null);
+        persistUser(null);
       } finally {
         setLoading(false);
       }
@@ -50,13 +58,13 @@ export const AuthProvider = ({ children }) => {
     if (!data.user || !data.user.id) {
       throw new Error('Invalid user data received from server');
     }
-    setUser(data.user);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    persistUser(data.user);
     return data.user;
   };
 
   const register = async (payload) => {
     let data;
+
     if (payload instanceof FormData) {
       data = await apiRegister(payload);
     } else {
@@ -64,20 +72,18 @@ export const AuthProvider = ({ children }) => {
       if (!name || !email || !password) throw new Error('Missing fields');
       data = await apiRegister({ name, email, password });
     }
-    setUser(data.user);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    persistUser(data.user);
     return data.user;
   };
 
   const logout = () => {
     apiLogout();
-    setUser(null);
-    localStorage.removeItem('user');
+    persistUser(null);
     toast.success('Logged out');
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoggedIn: !!user, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, isLoggedIn: !!user, login, register, logout, loading, setAuthUser: persistUser }}>
       {children}
     </AuthContext.Provider>
   );

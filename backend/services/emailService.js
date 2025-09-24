@@ -57,6 +57,104 @@ const createTransporter = async () => {
   }
 };
 
+const generatePasswordResetHTML = (user, resetLink) => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Password Reset - OlfactiveEcho</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #f97316 0%, #f59e0b 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #fff7ed; padding: 30px; border-radius: 0 0 10px 10px; }
+            .button { display: inline-block; background: #f97316; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+            .footer { text-align: center; color: #666; font-size: 14px; margin-top: 20px; }
+            .warning { background: #fef3c7; padding: 15px; border-radius: 6px; margin: 20px 0; color: #92400e; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Reset Your Password</h1>
+            </div>
+            <div class="content">
+                <p>Hi ${user.name || 'there'},</p>
+                <p>We received a request to reset the password associated with your OlfactiveEcho account. Click the button below to choose a new password:</p>
+                <div style="text-align: center;">
+                    <a href="${resetLink}" class="button">Reset Password</a>
+                </div>
+                <p>If the button above doesn't work, copy and paste this link into your browser:</p>
+                <p style="word-break: break-all;">${resetLink}</p>
+                <div class="warning">
+                    <strong>Security tip:</strong> This link will expire in 15 minutes. If you did not request a password reset, you can safely ignore this email.
+                </div>
+                <p>Stay fragrant,<br/>The OlfactiveEcho Team</p>
+            </div>
+            <div class="footer">
+                <p>You are receiving this email because a password reset was requested for your account.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+  `;
+};
+
+const sendPasswordResetEmail = async (user, resetLink) => {
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || 'OlfactiveEcho <noreply@olfactiveecho.com>',
+    to: user.email,
+    subject: 'Password Reset Request - OlfactiveEcho',
+    html: generatePasswordResetHTML(user, resetLink)
+  };
+
+  let attempt = 0;
+  const maxAttempts = 2;
+
+  while (attempt < maxAttempts) {
+    try {
+      attempt++;
+      console.log(`📧 Attempting to send password reset email (attempt ${attempt}/${maxAttempts})...`);
+
+      const transporter = await createTransporter();
+      const result = await transporter.sendMail(mailOptions);
+
+      console.log('✅ Password reset email sent successfully!');
+      console.log('📧 Message ID:', result.messageId);
+
+      if (result.messageId && !process.env.EMAIL_USER) {
+        console.log('🔗 Preview URL:', nodemailer.getTestMessageUrl(result));
+      }
+
+      return result;
+    } catch (error) {
+      console.error(`❌ Password reset email attempt ${attempt} failed:`, error.message);
+
+      if (attempt === maxAttempts || !isRetryableError(error)) {
+        console.log('📧 Falling back to local email simulation for password reset...');
+        try {
+          const localResult = await sendLocalEmail(mailOptions);
+          console.log('✅ Password reset email saved locally.');
+          return localResult;
+        } catch (localError) {
+          console.error('❌ Local email simulation failed for password reset:', localError.message);
+          if (process.env.NODE_ENV === 'production') {
+            console.log('📝 Password reset email queued for retry (production mode)');
+            return { messageId: 'queued', error: error.message };
+          }
+          return { messageId: 'dev-mode-skip', error: error.message };
+        }
+      }
+
+      const waitTime = Math.pow(2, attempt) * 500;
+      console.log(`⏰ Waiting ${waitTime}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+  }
+};
+
 // Create Ethereal Email transporter for testing
 const createEtherealTransporter = async () => {
   console.log('📧 Creating Ethereal test account...');
@@ -441,5 +539,6 @@ const sendOrderStatusUpdateEmail = async (order, user, oldStatus, newStatus) => 
 module.exports = {
   sendOrderConfirmationEmail,
   sendOrderStatusUpdateEmail,
+  sendPasswordResetEmail,
   isRetryableError
 };

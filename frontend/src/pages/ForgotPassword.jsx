@@ -1,14 +1,31 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { requestPasswordReset } from '../api/auth';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: Implement password reset logic
-    setIsSubmitted(true);
+    setError(null);
+    if (!email) return;
+
+    try {
+      setLoading(true);
+      await requestPasswordReset(email);
+      toast.success('If that email exists, a reset link has been sent');
+      setIsSubmitted(true);
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to send reset link';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (isSubmitted) {
@@ -47,6 +64,11 @@ const ForgotPassword = () => {
             Enter your email address and we'll send you a link to reset your password.
           </p>
         </div>
+        {error && (
+          <div className="text-sm text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded">
+            {error}
+          </div>
+        )}
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="email" className="sr-only">
@@ -68,9 +90,10 @@ const ForgotPassword = () => {
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+              disabled={loading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Send reset link
+              {loading ? 'Sending...' : 'Send reset link'}
             </button>
           </div>
 

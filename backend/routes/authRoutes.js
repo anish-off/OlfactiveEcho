@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { register, login, me } = require('../controllers/authController');
+const { register, login, me, forgotPassword, resetPassword } = require('../controllers/authController');
 const { auth } = require('../middleware/authMiddleware');
 
 // ensure uploads dir
@@ -21,6 +21,8 @@ const upload = multer({ storage, limits: { fileSize: 2 * 1024 * 1024 } });
 
 router.post('/register', upload.single('avatar'), register);
 router.post('/login', login);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password/:token', resetPassword);
 router.get('/me', auth, me);
 
 module.exports = router;
