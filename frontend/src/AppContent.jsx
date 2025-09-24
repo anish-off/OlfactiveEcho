@@ -34,29 +34,30 @@ import AdminRoute from './components/AdminRoute';
 import ScrollToTop from './components/ScrollToTop';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminLogin from './pages/AdminLogin';
+import UserOnlyRoute from './components/UserOnlyRoute';
 
 const AppContent = () => {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
   return (
     <>
       <ScrollToTop />
       <NavbarWrapper />
       <Routes>
         {/* Public routes */}
-        <Route path="/login" element={isLoggedIn ? <Navigate to="/" /> : <Login />} />
+        <Route path="/login" element={isLoggedIn ? (user?.role === 'admin' ? <Navigate to="/admin/dashboard" /> : <Navigate to="/" />) : <Login />} />
         <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/register" element={isLoggedIn ? <Navigate to="/" /> : <Register />} />
-        <Route path="/" element={<Home />} />
-        <Route path="/products" element={<Products />} />
-        <Route path="/product/:id" element={<Product />} />
+        <Route path="/register" element={isLoggedIn ? (user?.role === 'admin' ? <Navigate to="/admin/dashboard" /> : <Navigate to="/" />) : <Register />} />
+        <Route path="/" element={<UserOnlyRoute><Home /></UserOnlyRoute>} />
+        <Route path="/products" element={<UserOnlyRoute><Products /></UserOnlyRoute>} />
+        <Route path="/product/:id" element={<UserOnlyRoute><Product /></UserOnlyRoute>} />
         <Route path="/forgot-password" element={isLoggedIn ? <Navigate to="/" /> : <ForgotPassword />} />
         <Route path="/reset-password/:token" element={isLoggedIn ? <Navigate to="/" /> : <ResetPassword />} /> 
-        <Route path="/samples" element={<Samples />} /> 
-        <Route path="/shop" element={<Shop />} />
-        <Route path="/about" element={<AboutUsPage />} /> 
-        <Route path="/collections" element={<ProductsAll />} /> 
-        <Route path="/chatbot" element={<PerfumeFinder />} /> 
-        <Route path="/scent-matcher" element={<ScentMatcher />} /> 
+        <Route path="/samples" element={<UserOnlyRoute><Samples /></UserOnlyRoute>} /> 
+        <Route path="/shop" element={<UserOnlyRoute><Shop /></UserOnlyRoute>} />
+        <Route path="/about" element={<UserOnlyRoute><AboutUsPage /></UserOnlyRoute>} /> 
+        <Route path="/collections" element={<UserOnlyRoute><ProductsAll /></UserOnlyRoute>} /> 
+        <Route path="/chatbot" element={<UserOnlyRoute><PerfumeFinder /></UserOnlyRoute>} /> 
+        <Route path="/scent-matcher" element={<UserOnlyRoute><ScentMatcher /></UserOnlyRoute>} /> 
 
         {/* Protected routes wrapped with ProtectedRoute and LayoutWithSidebar */}
         <Route element={<ProtectedRoute><LayoutWithSidebar /></ProtectedRoute>}>

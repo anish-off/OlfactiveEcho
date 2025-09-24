@@ -3,7 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const ProtectedRoute = ({ children }) => {
-  const { isLoggedIn, loading } = useAuth();
+  const { isLoggedIn, user, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -17,6 +17,11 @@ const ProtectedRoute = ({ children }) => {
   if (!isLoggedIn) {
     // Redirect to login only after auth state is known. Preserve original location.
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  // Redirect admin users to admin area when they try to access user pages
+  if (user?.role === 'admin') {
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   return children;
