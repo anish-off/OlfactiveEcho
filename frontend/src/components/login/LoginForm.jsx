@@ -21,17 +21,32 @@ const LoginForm = () => {
     if (!email || !password) return setError('Email & password required');
     try {
       setSubmitting(true);
-  await login({ email, password });
-  toast.success('Logged in successfully');
-  navigate(from, { replace: true });
+      const loggedInUser = await login({ email, password });
+      console.log('=== LOGIN FORM DEBUG ===');
+      console.log('Logged in user:', loggedInUser);
+      console.log('User role:', loggedInUser?.role);
+      console.log('Is admin?', loggedInUser?.role === 'admin');
+      
+      toast.success('Logged in successfully');
+      
+      // Immediate navigation based on role
+      if (loggedInUser?.role === 'admin') {
+        console.log('Navigating to admin dashboard');
+        navigate('/admin', { replace: true });
+      } else {
+        console.log('Navigating to user area:', from);
+        navigate(from, { replace: true });
+      }
+      
     } catch (err) {
-  const msg = err?.response?.data?.message || 'Login failed';
-  setError(msg);
-  toast.error(msg);
+      const msg = err?.response?.data?.message || 'Login failed';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
   };
+
   return (
     <div className="space-y-6">
       <div className="text-center">

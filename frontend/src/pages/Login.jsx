@@ -5,15 +5,27 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
   const navigate = useNavigate();
   const brandName = "OLFACTIVE ECHO";
 
   useEffect(() => {
-    if (isLoggedIn) {
-      navigate('/products');
+    // Disable automatic redirect from Login page to prevent conflicts
+    // Navigation is now handled directly in LoginForm component
+    // Debug logs removed for production
+    
+    // Only redirect if user is already logged in when visiting login page
+    if (isLoggedIn && user) {
+      // User already logged in, redirecting...
+      if (user.role === 'admin') {
+        // Redirecting existing admin to dashboard
+        navigate('/admin', { replace: true });
+      } else {
+        // Redirecting existing user to products
+        navigate('/products', { replace: true });
+      }
     }
-  }, [isLoggedIn, navigate]);
+  }, [isLoggedIn, user, navigate]);
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-background overflow-hidden isolate">

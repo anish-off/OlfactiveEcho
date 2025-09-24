@@ -115,7 +115,7 @@ const perfumeSchema = new mongoose.Schema({
     enum: ['EDT', 'EDP', 'Parfum', 'EDC'],
     default: 'EDT'
   }
-}, { timestamps: true });
+}, { timestamps: true, suppressReservedKeysWarning: true });
 
 // Virtual fields for convenience
 perfumeSchema.virtual('allNotes').get(function() {

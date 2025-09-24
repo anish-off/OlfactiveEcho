@@ -19,15 +19,15 @@ const auth = async (req, res, next) => {
   
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('Token decoded successfully, user ID:', decoded.id);
+    console.log('Token decoded successfully:', { id: decoded.id, role: decoded.role, email: decoded.email });
     
     req.user = await User.findById(decoded.id).select('-password');
     if (!req.user) {
-      console.log('User not found in database');
+      console.log('User not found in database for ID:', decoded.id);
       return res.status(401).json({ success: false, message: 'User not found' });
     }
     
-    console.log('User authenticated:', req.user._id);
+    console.log('User authenticated:', { id: req.user._id, role: req.user.role, email: req.user.email });
     next();
   } catch (err) {
     console.log('Token verification failed:', err.message);

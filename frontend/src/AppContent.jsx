@@ -29,7 +29,9 @@ import ScentMatcher from './pages/ScentMatcher';
 import LayoutWithSidebar from './components/layout/LayoutWithSidebar';
 import NavbarWrapper from './components/NavbarWrapper';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
 import ScrollToTop from './components/ScrollToTop';
+import AdminDashboard from './pages/admin/AdminDashboard';
 
 const AppContent = () => {
   const { isLoggedIn } = useAuth();
@@ -68,6 +70,9 @@ const AppContent = () => {
           <Route path="/sample-checkout" element={<SampleCheckout />} />
           <Route path="/order-confirmation" element={<OrderConfirmation />} />
         </Route>
+
+        {/* Admin routes - protected with AdminRoute */}
+        <Route path="/admin/*" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
 
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

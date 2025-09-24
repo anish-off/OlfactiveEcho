@@ -13,17 +13,49 @@ const combinedPerfumes = require('../data/combined_perfumes.json');
 
     console.log('🌱 Seeding database with real perfume data...');
 
-    // Admin user
-    const adminEmail = 'admin@olfactiveecho.com';
+    // Admin user (create or promote)
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@olfactiveecho.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'AdminPass123!';
+    const resetAdminPassword = true; // Always reset admin password for testing
+
     let admin = await User.findOne({ email: adminEmail });
     if (!admin) {
-      admin = await User.create({ 
+      // Create new admin user - password will be hashed by pre-save hook
+      admin = new User({ 
         name: 'Admin', 
         email: adminEmail, 
-        password: 'AdminPass123!', 
+        password: adminPassword, 
         role: 'admin' 
       });
-      console.log('✅ Created admin user: admin@olfactiveecho.com / AdminPass123!');
+      await admin.save();
+      console.log(`✅ Created admin user: ${adminEmail} / ${adminPassword}`);
+    } else {
+      // Always update existing user to ensure admin role and reset password
+      admin.role = 'admin';
+      admin.password = adminPassword;
+      await admin.save();
+      console.log(`🔁 Updated existing user to admin and reset password: ${adminEmail} / ${adminPassword}`);
+    }
+
+    // Verify admin user was created/updated correctly
+    const verifyAdmin = await User.findOne({ email: adminEmail }).select('+password');
+    console.log(`🔍 Admin verification - Role: ${verifyAdmin.role}, Email: ${verifyAdmin.email}`);
+    
+    // Test password comparison (only if password exists)
+    if (verifyAdmin.password) {
+      try {
+        const testPassword = await verifyAdmin.comparePassword(adminPassword);
+        console.log(`🔐 Password verification test: ${testPassword ? 'PASS' : 'FAIL'}`);
+        
+        if (!testPassword) {
+          console.log('⚠️ WARNING: Admin password verification failed! You may need to reset the password.');
+        }
+      } catch (err) {
+        console.log('⚠️ Password verification error:', err.message);
+        console.log('This might be normal if the password was just created/updated.');
+      }
+    } else {
+      console.log('⚠️ No password found for admin user - this should not happen!');
     }
 
     // Clear existing perfumes to start fresh

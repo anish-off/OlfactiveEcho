@@ -26,8 +26,21 @@ export const AuthProvider = ({ children }) => {
 
   const login = async ({ email, password }) => {
     if (!email || !password) throw new Error('Missing credentials');
+    console.log('=== FRONTEND LOGIN DEBUG ===');
+    console.log('Attempting login for:', email);
+    
     const data = await apiLogin({ email, password });
+    console.log('Login API response:', data);
+    console.log('User data from API:', data.user);
+    
+    // Ensure user data is valid before setting state
+    if (!data.user || !data.user.id) {
+      throw new Error('Invalid user data received from server');
+    }
+    
     setUser(data.user);
+    console.log('User state updated to:', data.user);
+    
     return data.user;
   };
 

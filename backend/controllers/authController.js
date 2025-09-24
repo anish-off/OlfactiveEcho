@@ -2,7 +2,19 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 const signToken = (user) => {
-  return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  const payload = { 
+    id: user._id, 
+    role: user.role,
+    email: user.email,
+    name: user.name
+  };
+  console.log('=== JWT TOKEN CREATION ===');
+  console.log('Token payload:', payload);
+  
+  const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
+  console.log('Token created successfully');
+  
+  return token;
 };
 
 exports.register = async (req, res) => {
@@ -17,7 +29,7 @@ exports.register = async (req, res) => {
     const avatar = req.file ? `/uploads/${req.file.filename}` : undefined;
     const user = await User.create({ name, email, password, avatar });
     const token = signToken(user);
-    res.status(201).json({ user: { id: user._id, name: user.name, email: user.email, avatar: user.avatar }, token });
+    res.status(201).json({ user: { id: user._id, name: user.name, email: user.email, avatar: user.avatar, role: user.role }, token });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -26,13 +38,39 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log('=== LOGIN DEBUG ===');
+    console.log('Login attempt for email:', email);
+    
     const user = await User.findOne({ email }).select('+password');
-    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
+    if (!user) {
+      console.log('User not found for email:', email);
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    console.log('User found:', { id: user._id, email: user.email, role: user.role });
+    
     const match = await user.comparePassword(password);
-    if (!match) return res.status(401).json({ message: 'Invalid credentials' });
+    if (!match) {
+      console.log('Password mismatch for user:', email);
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
     const token = signToken(user);
-  res.json({ user: { id: user._id, name: user.name, email: user.email, avatar: user.avatar }, token });
+    const responseData = { 
+      user: { 
+        id: user._id, 
+        name: user.name, 
+        email: user.email, 
+        avatar: user.avatar, 
+        role: user.role 
+      }, 
+      token 
+    };
+    
+    console.log('Login successful, sending response:', responseData);
+    res.json(responseData);
   } catch (err) {
+    console.log('Login error:', err.message);
     res.status(500).json({ message: err.message });
   }
 };
