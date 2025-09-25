@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -7,8 +7,11 @@ import {
   EyeIcon,
   PencilIcon,
   TrashIcon,
-  PhotoIcon
+  PhotoIcon,
+  ArrowLeftIcon
 } from '@heroicons/react/24/outline';
+import AdminProductDetail from './AdminProductDetail';
+import AdminProductEdit from './AdminProductEdit';
 
 const ProductManagement = () => {
   const [products, setProducts] = useState([]);
@@ -22,10 +25,30 @@ const ProductManagement = () => {
     status: ''
   });
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     fetchProducts();
   }, [currentPage, searchTerm, filters]);
+
+  // Refresh products when returning to the main products page
+  useEffect(() => {
+    // Check if we're on the main products page (not on detail or edit subpages)
+    if (location.pathname === '/admin/products') {
+      const lastRefresh = sessionStorage.getItem('productsLastRefresh');
+      const now = Date.now().toString();
+      
+      // If there's a refresh flag or it's been more than 1 second since last refresh
+      if (location.state?.refreshProducts || !lastRefresh || (now - lastRefresh > 1000)) {
+        fetchProducts();
+        sessionStorage.setItem('productsLastRefresh', now);
+        // Clear the state to prevent unnecessary refreshes
+        if (location.state?.refreshProducts) {
+          window.history.replaceState({}, document.title);
+        }
+      }
+    }
+  }, [location]);
 
   const fetchProducts = async () => {
     try {
@@ -303,26 +326,11 @@ const ProductManagement = () => {
           </div>
         </div>
       } />
-      <Route path="/new" element={<ProductForm />} />
-      <Route path="/:id/edit" element={<ProductForm />} />
-      <Route path="/:id" element={<ProductDetails />} />
+      <Route path="/new" element={<AdminProductEdit />} />
+      <Route path="/:id/edit" element={<AdminProductEdit />} />
+      <Route path="/:id" element={<AdminProductDetail />} />
     </Routes>
   );
 };
-
-// Placeholder components for product forms and details
-const ProductForm = () => (
-  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-    <h2 className="text-xl font-bold text-gray-900 mb-4">Product Form</h2>
-    <p className="text-gray-600">Product form component will be implemented here.</p>
-  </div>
-);
-
-const ProductDetails = () => (
-  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-    <h2 className="text-xl font-bold text-gray-900 mb-4">Product Details</h2>
-    <p className="text-gray-600">Product details component will be implemented here.</p>
-  </div>
-);
 
 export default ProductManagement;
