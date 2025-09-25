@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Home from './pages/Home';
@@ -25,6 +25,7 @@ import WishlistPage from './pages/WishlistPage'; // Added missing import
 import PerfumeFinder from './pages/PerfumeFinder';
 import Orders from './pages/Orders';
 import OrderConfirmation from './components/order/OrderConfirmation';
+import ScentMatcher from './pages/ScentMatcher';
 
 import LayoutWithSidebar from './components/layout/LayoutWithSidebar';
 import NavbarWrapper from './components/NavbarWrapper';
@@ -41,6 +42,14 @@ import OfferNotificationPanel from './components/discount/OfferNotificationPanel
 const AppContent = () => {
   const { isLoggedIn, user } = useAuth();
   const location = useLocation();
+
+  useEffect(() => {
+    if(location.pathname.startsWith('/admin') && user?.role=== 'admin' ) {
+      document.title = 'OlfactiveEcho - Admin';
+    }else {
+      document.title = 'OlfactiveEcho';
+    }
+  }, [location.pathname, user?.role] );
   
   return (
     <>
