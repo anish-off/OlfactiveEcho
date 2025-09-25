@@ -25,7 +25,6 @@ import WishlistPage from './pages/WishlistPage'; // Added missing import
 import PerfumeFinder from './pages/PerfumeFinder';
 import Orders from './pages/Orders';
 import OrderConfirmation from './components/order/OrderConfirmation';
-import ScentMatcher from './pages/ScentMatcher';
 
 import LayoutWithSidebar from './components/layout/LayoutWithSidebar';
 import NavbarWrapper from './components/NavbarWrapper';
@@ -33,13 +32,12 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import ScrollToTop from './components/ScrollToTop';
 import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminLogin from './pages/AdminLogin';
 import UserOnlyRoute from './components/UserOnlyRoute';
 
 // Import Advanced Offer Components
 import AdvancedOffersBanner from './components/discount/AdvancedOffersBanner';
 import OfferNotificationPanel from './components/discount/OfferNotificationPanel';
-
+ 
 const AppContent = () => {
   const { isLoggedIn, user } = useAuth();
   const location = useLocation();
@@ -55,7 +53,6 @@ const AppContent = () => {
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={isLoggedIn ? (user?.role === 'admin' ? <Navigate to="/admin/dashboard" /> : <Navigate to="/" />) : <Login />} />
-        <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/register" element={isLoggedIn ? (user?.role === 'admin' ? <Navigate to="/admin/dashboard" /> : <Navigate to="/" />) : <Register />} />
         <Route path="/" element={<UserOnlyRoute><Home /></UserOnlyRoute>} />
         <Route path="/products" element={<UserOnlyRoute><Products /></UserOnlyRoute>} />

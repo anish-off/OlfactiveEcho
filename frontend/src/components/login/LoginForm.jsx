@@ -28,7 +28,6 @@ const LoginForm = () => {
       
       toast.success('Logged in successfully');
       
-      // Navigate to user area (admins should use /admin/login)
       console.log('Navigating to user area:', from);
       navigate(from, { replace: true });
       
