@@ -59,5 +59,7 @@ router.put('/coupons/:id/toggle-status', adminCouponController.toggleStatus);
 router.get('/orders', orderController.getAllOrders);
 router.get('/orders/:id', orderController.getOrderById);
 router.put('/orders/:id/status', orderController.updateOrderStatus);
+router.put('/orders/:id/approve', orderController.approveOrder);
+router.put('/orders/:id/decline', orderController.declineOrder);
 
 module.exports = router;

@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/api';
+import {
+  EyeIcon,
+  TruckIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ClockIcon,
+  ShoppingBagIcon,
+  CreditCardIcon,
+  CalendarIcon
+} from '@heroicons/react/24/outline';
 
 const formatCurrency = (v) => `₹${(v ?? 0).toFixed(2)}`;
 
@@ -9,7 +19,6 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('en-IN', {
     year: 'numeric',
     month: 'long',
-    day: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
   });
@@ -17,14 +26,35 @@ const formatDate = (dateString) => {
 
 const getStatusColor = (status) => {
   const colors = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    confirmed: 'bg-blue-100 text-blue-800',
-    processing: 'bg-purple-100 text-purple-800',
-    shipped: 'bg-indigo-100 text-indigo-800',
-    delivered: 'bg-green-100 text-green-800',
-    cancelled: 'bg-red-100 text-red-800'
+    pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    confirmed: 'bg-blue-100 text-blue-800 border-blue-200',
+    processing: 'bg-purple-100 text-purple-800 border-purple-200',
+    shipped: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    delivered: 'bg-green-100 text-green-800 border-green-200',
+    cancelled: 'bg-red-100 text-red-800 border-red-200',
+    declined: 'bg-red-100 text-red-800 border-red-200'
   };
-  return colors[status] || 'bg-gray-100 text-gray-800';
+  return colors[status] || 'bg-gray-100 text-gray-800 border-gray-200';
+};
+
+const getStatusIcon = (status) => {
+  switch (status) {
+    case 'pending':
+      return <ClockIcon className="h-4 w-4" />;
+    case 'confirmed':
+      return <CheckCircleIcon className="h-4 w-4" />;
+    case 'processing':
+      return <ShoppingBagIcon className="h-4 w-4" />;
+    case 'shipped':
+      return <TruckIcon className="h-4 w-4" />;
+    case 'delivered':
+      return <CheckCircleIcon className="h-4 w-4" />;
+    case 'cancelled':
+    case 'declined':
+      return <XCircleIcon className="h-4 w-4" />;
+    default:
+      return <ClockIcon className="h-4 w-4" />;
+  }
 };
 
 const getPaymentStatusColor = (status) => {
@@ -39,6 +69,11 @@ const getPaymentStatusColor = (status) => {
 
 // Calculate estimated delivery date based on order status
 const getEstimatedDeliveryDate = (order) => {
+  // If admin has set an estimated delivery date, use that
+  if (order.estimatedDeliveryDate) {
+    return new Date(order.estimatedDeliveryDate);
+  }
+  
   if (!order.createdAt) return null;
   
   const createdDate = new Date(order.createdAt);
@@ -85,6 +120,7 @@ const getEstimatedDeliveryDate = (order) => {
       return getDeliveryDateWithBuffer(addBusinessDays(createdDate, 2));
     case 'delivered':
     case 'cancelled':
+    case 'declined':
     default:
       return null;
   }
@@ -124,6 +160,7 @@ const shouldShowPaymentStatus = (order) => {
 const OrderCard = ({ order, onOrderUpdate }) => {
   const [expanded, setExpanded] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const navigate = useNavigate();
 
   const handleCancelOrder = async (orderId) => {
     if (!window.confirm('Are you sure you want to cancel this order?')) {
@@ -186,18 +223,25 @@ const OrderCard = ({ order, onOrderUpdate }) => {
   };
 
   return (
-    <div className="bg-card rounded-lg shadow-sm border">
+    <div 
+      className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+      onClick={() => navigate(`/orders/${order._id}`)}
+    >
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold">Order #{order._id.slice(-8)}</h3>
-            <p className="text-sm text-gray-600">{formatDate(order.createdAt)}</p>
+            <h3 className="text-lg font-semibold text-gray-900">Order #{order._id.slice(-8)}</h3>
+            <p className="text-sm text-gray-600 flex items-center">
+              <CalendarIcon className="h-4 w-4 mr-1" />
+              {formatDate(order.createdAt)}
+            </p>
           </div>
           <div className="text-right">
             <div className="text-xl font-bold text-primary">{formatCurrency(order.total)}</div>
-            <div className="flex gap-2 mt-1 items-center justify-end flex-wrap">
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+            <div className="flex gap-2 mt-2 items-center justify-end flex-wrap">
+              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(order.status)}`}>
+                {getStatusIcon(order.status)}
+                <span className="ml-1 capitalize">{order.status}</span>
               </span>
               {/* Show payment status only when it provides additional information */}
               {shouldShowPaymentStatus(order) && (
@@ -205,7 +249,7 @@ const OrderCard = ({ order, onOrderUpdate }) => {
                   Payment: {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
                 </span>
               )}
-              {order.status !== 'delivered' && order.status !== 'cancelled' && getEstimatedDeliveryDate(order) && (
+              {order.status !== 'delivered' && order.status !== 'cancelled' && order.status !== 'declined' && getEstimatedDeliveryDate(order) && (
                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 whitespace-nowrap">
                   {formatDeliveryDate(getEstimatedDeliveryDate(order))}
                 </span>
@@ -214,32 +258,21 @@ const OrderCard = ({ order, onOrderUpdate }) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 mb-4">
-          <div className="flex -space-x-2">
-            {order.items.slice(0, 3).map((item, index) => (
-              <img
-                key={index}
-                src={item.perfume?.imageUrl || '/placeholder.png'}
-                alt={item.perfume?.name}
-                className="w-10 h-10 rounded-full border-2 border-white object-cover"
-              />
-            ))}
-            {order.items.length > 3 && (
-              <div className="w-10 h-10 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-xs font-medium">
-                +{order.items.length - 3}
-              </div>
-            )}
-          </div>
-          <div>
-            <p className="font-medium">
-              {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
-              {order.sample?.samplePerfume && ' + 1 sample'}
-            </p>
-            <p className="text-sm text-gray-600">
-              Payment: {order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
-            </p>
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-gray-900">
+                {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
+                {order.sample?.samplePerfume && ' + 1 sample'}
+              </p>
+              <p className="text-sm text-gray-600 flex items-center mt-1">
+                <CreditCardIcon className="h-4 w-4 mr-1" />
+                {order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
+              </p>
+            </div>
             {getEstimatedDeliveryDate(order) && (
-              <p className="text-sm text-blue-600 font-medium">
+              <p className="text-sm text-blue-600 font-medium flex items-center">
+                <TruckIcon className="h-4 w-4 mr-1" />
                 {formatDeliveryDate(getEstimatedDeliveryDate(order))}
               </p>
             )}
@@ -248,33 +281,46 @@ const OrderCard = ({ order, onOrderUpdate }) => {
 
         <div className="flex items-center justify-between">
           <button
-            onClick={() => setExpanded(!expanded)}
-            className="text-primary hover:text-primary/80 text-sm font-medium"
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent card click when clicking this button
+              setExpanded(!expanded);
+            }}
+            className="text-primary hover:text-primary/80 text-sm font-medium flex items-center"
           >
+            <EyeIcon className="h-4 w-4 mr-1" />
             {expanded ? 'Hide Details' : 'View Details'}
           </button>
           
           <div className="flex gap-2">
             {order.status === 'shipped' && order.trackingNumber && (
               <button 
-                onClick={() => window.open(`https://track.example.com/${order.trackingNumber}`, '_blank')}
-                className="px-3 py-1 bg-blue-50 text-blue-600 rounded text-sm font-medium hover:bg-blue-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(`https://track.example.com/${order.trackingNumber}`, '_blank');
+                }}
+                className="inline-flex items-center px-3 py-1 bg-blue-50 text-blue-600 rounded-md text-sm font-medium hover:bg-blue-100 transition-colors"
               >
+                <TruckIcon className="h-4 w-4 mr-1" />
                 Track Order
               </button>
             )}
             {order.status === 'shipped' && getEstimatedDeliveryDate(order) && (
-              <span className="px-3 py-1 bg-green-50 text-green-600 rounded text-sm font-medium">
+              <span className="inline-flex items-center px-3 py-1 bg-green-50 text-green-600 rounded-md text-sm font-medium">
+                <CalendarIcon className="h-4 w-4 mr-1" />
                 {formatDeliveryDate(getEstimatedDeliveryDate(order), '')}
               </span>
             )}
             {order.status === 'pending' && (
               <button 
-                onClick={() => handleCancelOrder(order._id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCancelOrder(order._id);
+                }}
                 disabled={cancelling}
-                className="px-3 py-1 bg-red-50 text-red-600 rounded text-sm font-medium hover:bg-red-100 disabled:opacity-50"
+                className="inline-flex items-center px-3 py-1 bg-red-50 text-red-600 rounded-md text-sm font-medium hover:bg-red-100 disabled:opacity-50 transition-colors"
                 title={`Cancel order ${order._id} (Status: ${order.status})`}
               >
+                <XCircleIcon className="h-4 w-4 mr-1" />
                 {cancelling ? 'Cancelling...' : 'Cancel'}
               </button>
             )}

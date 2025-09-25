@@ -8,6 +8,7 @@ import {
   CheckCircleIcon,
   XCircleIcon
 } from '@heroicons/react/24/outline';
+import OrderDetails from './OrderDetails';
 
 const OrderManagement = () => {
   const [orders, setOrders] = useState([]);
@@ -16,11 +17,20 @@ const OrderManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
+  const [actionLoading, setActionLoading] = useState({});
+  const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchOrders();
   }, [currentPage, searchTerm, statusFilter]);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast({ show: false, message: '', type: '' });
+    }, 4000);
+  };
 
   const fetchOrders = async () => {
     try {
@@ -78,7 +88,8 @@ const OrderManagement = () => {
       processing: 'bg-purple-100 text-purple-800',
       shipped: 'bg-indigo-100 text-indigo-800',
       delivered: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800'
+      cancelled: 'bg-red-100 text-red-800',
+      declined: 'bg-red-100 text-red-800'
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
@@ -94,9 +105,90 @@ const OrderManagement = () => {
       case 'delivered':
         return <CheckCircleIcon className="h-4 w-4" />;
       case 'cancelled':
+      case 'declined':
         return <XCircleIcon className="h-4 w-4" />;
       default:
         return <ClipboardDocumentListIcon className="h-4 w-4" />;
+    }
+  };
+
+  const handleApproveOrder = async (orderId) => {
+    try {
+      setActionLoading(prev => ({ ...prev, [orderId]: 'approving' }));
+      const token = localStorage.getItem('token');
+      
+      // Default delivery date: 5 days from now
+      const deliveryDate = new Date();
+      deliveryDate.setDate(deliveryDate.getDate() + 5);
+      
+      const response = await fetch(`/api/admin/orders/${orderId}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          estimatedDeliveryDate: deliveryDate.toISOString(),
+          adminNotes: 'Order approved from admin panel'
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setOrders(prev => prev.map(order => 
+          order._id === orderId ? data.order : order
+        ));
+        showToast('Order approved successfully!', 'success');
+      } else {
+        const errorData = await response.json();
+        showToast(errorData.message || 'Failed to approve order', 'error');
+      }
+    } catch (error) {
+      console.error('Error approving order:', error);
+      showToast('Failed to approve order', 'error');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [orderId]: null }));
+    }
+  };
+
+  const handleDeclineOrder = async (orderId) => {
+    const reason = prompt('Please provide a reason for declining this order:');
+    if (!reason || !reason.trim()) {
+      showToast('Decline reason is required', 'error');
+      return;
+    }
+
+    try {
+      setActionLoading(prev => ({ ...prev, [orderId]: 'declining' }));
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`/api/admin/orders/${orderId}/decline`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          declineReason: reason.trim(),
+          adminNotes: 'Order declined from admin panel'
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setOrders(prev => prev.map(order => 
+          order._id === orderId ? data.order : order
+        ));
+        showToast('Order declined successfully!', 'success');
+      } else {
+        const errorData = await response.json();
+        showToast(errorData.message || 'Failed to decline order', 'error');
+      }
+    } catch (error) {
+      console.error('Error declining order:', error);
+      showToast('Failed to decline order', 'error');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [orderId]: null }));
     }
   };
 
@@ -137,6 +229,7 @@ const OrderManagement = () => {
                 <option value="shipped">Shipped</option>
                 <option value="delivered">Delivered</option>
                 <option value="cancelled">Cancelled</option>
+                <option value="declined">Declined</option>
               </select>
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-600">Total Orders:</span>
@@ -210,30 +303,53 @@ const OrderManagement = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <select
-                                value={order.status}
-                                onChange={(e) => updateOrderStatus(order._id, e.target.value)}
-                                className={`text-xs font-semibold rounded-full px-2 py-1 border-0 ${getStatusColor(order.status)}`}
-                              >
-                                <option value="pending">Pending</option>
-                                <option value="confirmed">Confirmed</option>
-                                <option value="processing">Processing</option>
-                                <option value="shipped">Shipped</option>
-                                <option value="delivered">Delivered</option>
-                                <option value="cancelled">Cancelled</option>
-                              </select>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                                {getStatusIcon(order.status)}
+                                <span className="ml-1 capitalize">{order.status}</span>
+                              </span>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {new Date(order.createdAt).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button
-                              onClick={() => navigate(`/admin/orders/${order._id}`)}
-                              className="text-indigo-600 hover:text-indigo-900"
-                            >
-                              <EyeIcon className="h-4 w-4" />
-                            </button>
+                            <div className="flex items-center space-x-2">
+                              {order.status === 'pending' && (
+                                <>
+                                  <button
+                                    onClick={() => handleApproveOrder(order._id)}
+                                    disabled={actionLoading[order._id] === 'approving'}
+                                    className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                                  >
+                                    {actionLoading[order._id] === 'approving' ? (
+                                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                                    ) : (
+                                      <CheckCircleIcon className="h-3 w-3" />
+                                    )}
+                                    <span className="ml-1">Accept</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeclineOrder(order._id)}
+                                    disabled={actionLoading[order._id] === 'declining'}
+                                    className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                                  >
+                                    {actionLoading[order._id] === 'declining' ? (
+                                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                                    ) : (
+                                      <XCircleIcon className="h-3 w-3" />
+                                    )}
+                                    <span className="ml-1">Decline</span>
+                                  </button>
+                                </>
+                              )}
+                              <button
+                                onClick={() => navigate(`/admin/orders/${order._id}`)}
+                                className="text-indigo-600 hover:text-indigo-900"
+                                title="View Details"
+                              >
+                                <EyeIcon className="h-4 w-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -290,6 +406,34 @@ const OrderManagement = () => {
               </>
             )}
           </div>
+
+          {/* Toast Notification */}
+          {toast.show && (
+            <div className="fixed top-4 right-4 z-50 animate-fade-in">
+              <div className={`flex items-center p-4 rounded-lg shadow-lg max-w-sm ${
+                toast.type === 'success' 
+                  ? 'bg-green-50 border border-green-200 text-green-800' 
+                  : 'bg-red-50 border border-red-200 text-red-800'
+              }`}>
+                <div className="flex-shrink-0">
+                  {toast.type === 'success' ? (
+                    <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <XCircleIcon className="h-5 w-5 text-red-600" />
+                  )}
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium">{toast.message}</p>
+                </div>
+                <button
+                  onClick={() => setToast({ show: false, message: '', type: '' })}
+                  className="ml-auto -mx-1.5 -my-1.5 rounded-lg p-1.5 hover:bg-gray-100 focus:ring-2 focus:ring-gray-300"
+                >
+                  <XCircleIcon className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       } />
       <Route path="/:id" element={<OrderDetails />} />
@@ -297,12 +441,5 @@ const OrderManagement = () => {
   );
 };
 
-// Placeholder component for order details
-const OrderDetails = () => (
-  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-    <h2 className="text-xl font-bold text-gray-900 mb-4">Order Details</h2>
-    <p className="text-gray-600">Order details component will be implemented here.</p>
-  </div>
-);
 
 export default OrderManagement;

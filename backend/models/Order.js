@@ -75,10 +75,19 @@ const orderSchema = new mongoose.Schema({
   // Order tracking
   status: { 
     type: String, 
-    enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'], 
+    enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'declined'], 
     default: 'pending' 
   },
-  trackingNumber: { type: String }
+  trackingNumber: { type: String },
+  
+  // Admin approval fields
+  estimatedDeliveryDate: { type: Date },
+  declineReason: { type: String },
+  adminNotes: { type: String },
+  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  approvedAt: { type: Date },
+  declinedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  declinedAt: { type: Date }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);

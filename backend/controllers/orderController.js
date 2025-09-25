@@ -277,12 +277,67 @@ exports.getOrders = async (req, res) => {
 
 exports.getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find()
-      .populate('user items.perfume sample.samplePerfume')
-      .sort({ createdAt: -1 });
-    res.json(orders);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+    const status = req.query.status || '';
+    const skip = (page - 1) * limit;
+
+    // Build search query
+    let searchQuery = {};
+    
+    if (search) {
+      // First, find users that match the search term
+      const matchingUsers = await User.find({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } }
+        ]
+      }).select('_id');
+      
+      const userIds = matchingUsers.map(user => user._id);
+      
+      searchQuery.$or = [
+        { '_id': { $regex: search, $options: 'i' } },
+        { 'user': { $in: userIds } }
+      ];
+      
+      // If search looks like an ObjectId, search by exact ID
+      if (search.match(/^[0-9a-fA-F]{24}$/)) {
+        searchQuery.$or.push({ '_id': search });
+      }
+    }
+    
+    if (status) {
+      searchQuery.status = status;
+    }
+
+    const [orders, total] = await Promise.all([
+      Order.find(searchQuery)
+        .populate('user items.perfume sample.samplePerfume')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Order.countDocuments(searchQuery)
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        orders,
+        pagination: {
+          current: page,
+          pages: Math.ceil(total / limit),
+          total,
+          limit
+        }
+      }
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ 
+      success: false,
+      message: err.message 
+    });
   }
 };
 
@@ -297,7 +352,7 @@ exports.getOrderById = async (req, res) => {
     }
     
     // Users can only view their own orders (unless admin)
-    if (order.user._id.toString() !== req.user._id.toString() && !req.user.isAdmin) {
+    if (order.user._id.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied' });
     }
     
@@ -431,6 +486,141 @@ exports.cancelOrder = async (req, res) => {
     console.error('Cancel order error:', err);
     res.status(500).json({ 
       success: false,
+      message: err.message 
+    });
+  }
+};
+
+// Admin approve order
+exports.approveOrder = async (req, res) => {
+  try {
+    const { estimatedDeliveryDate, adminNotes } = req.body;
+    const orderId = req.params.id;
+    
+    const order = await Order.findById(orderId).populate('items.perfume');
+    
+    if (!order) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Order not found' 
+      });
+    }
+    
+    if (order.status !== 'pending') {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Order cannot be approved. Current status: ${order.status}` 
+      });
+    }
+    
+    // Calculate estimated delivery date (default 5 days from now)
+    const deliveryDate = estimatedDeliveryDate ? 
+      new Date(estimatedDeliveryDate) : 
+      new Date(Date.now() + 5 * 24 * 60 * 60 * 1000); // 5 days from now
+    
+    // Update stock for each item in the order
+    for (const item of order.items) {
+      const perfume = await Perfume.findById(item.perfume._id);
+      if (perfume) {
+        if (perfume.stock < item.quantity) {
+          return res.status(400).json({
+            success: false,
+            message: `Insufficient stock for ${perfume.name}. Available: ${perfume.stock}, Required: ${item.quantity}`
+          });
+        }
+        
+        // Reduce stock
+        perfume.stock -= item.quantity;
+        await perfume.save();
+      }
+    }
+    
+    // Update order status and admin fields
+    order.status = 'confirmed';
+    order.estimatedDeliveryDate = deliveryDate;
+    order.adminNotes = adminNotes || '';
+    order.approvedBy = req.user._id;
+    order.approvedAt = new Date();
+    
+    await order.save();
+    await order.populate('user approvedBy');
+    
+    // Send approval email notification
+    try {
+      await sendOrderStatusUpdateEmail(order, order.user, 'pending', 'confirmed');
+    } catch (emailError) {
+      console.error('Failed to send order approval email:', emailError);
+    }
+    
+    res.json({
+      success: true,
+      order,
+      message: 'Order approved successfully'
+    });
+  } catch (err) {
+    console.error('Approve order error:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: err.message 
+    });
+  }
+};
+
+// Admin decline order
+exports.declineOrder = async (req, res) => {
+  try {
+    const { declineReason, adminNotes } = req.body;
+    const orderId = req.params.id;
+    
+    if (!declineReason) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Decline reason is required' 
+      });
+    }
+    
+    const order = await Order.findById(orderId);
+    
+    if (!order) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Order not found' 
+      });
+    }
+    
+    if (order.status !== 'pending') {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Order cannot be declined. Current status: ${order.status}` 
+      });
+    }
+    
+    // Update order status and admin fields
+    order.status = 'declined';
+    order.declineReason = declineReason;
+    order.adminNotes = adminNotes || '';
+    order.declinedBy = req.user._id;
+    order.declinedAt = new Date();
+    
+    await order.save();
+    await order.populate('user declinedBy');
+    
+    // Send decline email notification
+    try {
+      await sendOrderStatusUpdateEmail(order, order.user, 'pending', 'declined');
+    } catch (emailError) {
+      console.error('Failed to send order decline email:', emailError);
+    }
+    
+    res.json({
+      success: true,
+      order,
+      message: 'Order declined successfully'
+    });
+  } catch (err) {
+    console.error('Decline order error:', err);
+    res.status(500).json({ 
+      success: false, 
       message: err.message 
     });
   }

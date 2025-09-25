@@ -24,6 +24,7 @@ import AccountSettings from './pages/AccountSettings'; // Added missing import
 import WishlistPage from './pages/WishlistPage'; // Added missing import
 import PerfumeFinder from './pages/PerfumeFinder';
 import Orders from './pages/Orders';
+import UserOrderDetails from './components/user/UserOrderDetails';
 import OrderConfirmation from './components/order/OrderConfirmation';
 import ScentMatcher from './pages/ScentMatcher';
 
@@ -78,7 +79,8 @@ const AppContent = () => {
         {/* Protected routes wrapped with ProtectedRoute and LayoutWithSidebar */}
         <Route element={<ProtectedRoute><LayoutWithSidebar /></ProtectedRoute>}>
           <Route path="/profile" element={<Profile />} />
-          <Route path="/orders" element={<Orders />} /> 
+          <Route path="/orders" element={<Orders />} />
+          <Route path="/orders/:id" element={<UserOrderDetails />} /> 
           <Route path="/wishlist" element={<WishlistPage />} /> 
           <Route path="/cart" element={<Cart />} />
           <Route path="/settings" element={<AccountSettings />} /> 
