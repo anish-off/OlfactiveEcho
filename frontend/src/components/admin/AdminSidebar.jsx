@@ -10,18 +10,24 @@ import {
   TicketIcon,
   ChartBarIcon,
   CogIcon,
-  XMarkIcon
+  XMarkIcon,
+  ArchiveBoxIcon,
+  ClockIcon,
+  CurrencyRupeeIcon
 } from '@heroicons/react/24/outline';
 
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: HomeIcon },
   { name: 'Products', href: '/admin/products', icon: ShoppingBagIcon },
+  { name: 'Inventory', href: '/admin/inventory', icon: ArchiveBoxIcon },
   { name: 'Categories', href: '/admin/categories', icon: TagIcon },
   { name: 'Brands', href: '/admin/brands', icon: BuildingStorefrontIcon },
   { name: 'Orders', href: '/admin/orders', icon: ClipboardDocumentListIcon },
   { name: 'Customers', href: '/admin/customers', icon: UsersIcon },
   { name: 'Coupons', href: '/admin/coupons', icon: TicketIcon },
   { name: 'Analytics', href: '/admin/analytics', icon: ChartBarIcon },
+  { name: 'Revenue Analytics', href: '/admin/revenue', icon: CurrencyRupeeIcon },
+  { name: 'Activity Log', href: '/admin/activity', icon: ClockIcon },
   { name: 'Settings', href: '/admin/settings', icon: CogIcon },
 ];
 
@@ -47,13 +53,13 @@ const AdminSidebar = ({ open, setOpen }) => {
         ${open ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
-          <div className="flex items-center">
+          <div className="flex items-center gap-2">
             <img
-              className="h-8 w-auto"
-              src="/olfactiveecho-mark.svg"
+              className="h-10 w-auto object-contain"
+              src="/logo.jpg"
               alt="OlfactiveEcho"
             />
-            <span className="ml-2 text-xl font-bold text-gray-900">Admin</span>
+            <span className="text-lg font-bold text-gray-900">Admin</span>
           </div>
           <button
             type="button"

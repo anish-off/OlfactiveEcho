@@ -17,7 +17,17 @@ const Footer = () => (
 
     {/* Additional Footer Content */}
     <div className="mt-16 border-t border-gray-200 pt-10">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto px-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-8 max-w-6xl mx-auto px-6">
+        {/* Logo & Description */}
+        <div className="col-span-1">
+          <img 
+            src="/logo.jpg" 
+            alt="OlfactiveEcho" 
+            className="h-20 w-auto object-contain mb-4"
+          />
+          <p className="text-sm text-gray-600 italic">Whispers of Scent</p>
+        </div>
+
         {/* Quick Links */}
         <div>
           <h3 className="text-xl font-semibold text-gray-800 mb-4">Quick Links</h3>

@@ -26,6 +26,7 @@ const userSchema = new mongoose.Schema({
   preferences: {
     emailNotifications: { type: Boolean, default: true },
     smsNotifications: { type: Boolean, default: false },
+    whatsappNotifications: { type: Boolean, default: false },
     orderUpdates: { type: Boolean, default: true },
     promotions: { type: Boolean, default: true },
     newsletter: { type: Boolean, default: true }

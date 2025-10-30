@@ -3,6 +3,7 @@ const Perfume = require('../models/Perfume');
 const User = require('../models/User');
 const mongoose = require('mongoose');
 const { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail, sendReturnRequestEmail, sendDeliveryFailedEmail } = require('../services/emailService');
+const notificationService = require('../services/notificationService');
 
 // Calculate shipping based on order value and location
 const calculateShipping = (subtotal, shippingAddress) => {
@@ -313,18 +314,21 @@ exports.createOrder = async (req, res) => {
     
     await order.populate('items.perfume sample.samplePerfume');
     
-    // Send order confirmation email
+    // Send order confirmation notifications (Email + SMS)
     try {
-      console.log('📧 Attempting to send order confirmation email...');
+      console.log('📧 Sending order confirmation notifications...');
       const user = await User.findById(req.user._id);
-      console.log('👤 User found for email:', user.email);
+      console.log('👤 User found:', user.email);
       
-      const emailResult = await sendOrderConfirmationEmail(order, user);
-      console.log('✅ Order confirmation email sent successfully:', emailResult.messageId);
-    } catch (emailError) {
-      console.error('❌ Failed to send order confirmation email:', emailError.message);
-      console.error('📧 Email error details:', emailError);
-      // Don't fail the order creation if email fails
+      // Use unified notification service
+      const notificationResult = await notificationService.sendOrderConfirmation(order, user);
+      console.log('✅ Order confirmation notifications sent:', {
+        email: !!notificationResult.email,
+        sms: !!notificationResult.sms
+      });
+    } catch (notificationError) {
+      console.error('❌ Failed to send order confirmation notifications:', notificationError.message);
+      // Don't fail the order creation if notifications fail
     }
     
     res.status(201).json({
@@ -479,14 +483,14 @@ exports.updateOrderStatus = async (req, res) => {
     await order.save();
     await order.populate('items.perfume sample.samplePerfume user');
     
-    // Send status update email if status changed
+    // Send status update notifications (Email + SMS) if status changed
     if (oldStatus !== status) {
       try {
-        await sendOrderStatusUpdateEmail(order, order.user, oldStatus, status);
-        console.log('Order status update email sent successfully');
-      } catch (emailError) {
-        console.error('Failed to send order status update email:', emailError);
-        // Don't fail the status update if email fails
+        await notificationService.sendOrderStatusUpdate(order, order.user, oldStatus, status);
+        console.log('✅ Order status update notifications sent successfully');
+      } catch (notificationError) {
+        console.error('❌ Failed to send order status update notifications:', notificationError.message);
+        // Don't fail the status update if notifications fail
       }
     }
     
@@ -571,12 +575,18 @@ exports.cancelOrder = async (req, res) => {
     await order.save();
     await order.populate('items.perfume sample.samplePerfume');
     
-    // Send cancellation email
+    // Send cancellation notifications (Email + SMS)
     try {
       const user = await User.findById(req.user._id);
-      await sendOrderStatusUpdateEmail(order, user, order.statusHistory[order.statusHistory.length - 2]?.status || 'confirmed', 'cancelled');
-    } catch (emailError) {
-      console.error('Failed to send cancellation email:', emailError);
+      await notificationService.sendOrderStatusUpdate(
+        order, 
+        user, 
+        order.statusHistory[order.statusHistory.length - 2]?.status || 'confirmed', 
+        'cancelled'
+      );
+      console.log('✅ Cancellation notifications sent successfully');
+    } catch (notificationError) {
+      console.error('❌ Failed to send cancellation notifications:', notificationError.message);
     }
     
     console.log('Order cancelled successfully:', order._id);
@@ -649,11 +659,12 @@ exports.approveOrder = async (req, res) => {
     await order.save();
     await order.populate('user approvedBy');
     
-    // Send approval email notification
+    // Send approval notifications (Email + SMS)
     try {
-      await sendOrderStatusUpdateEmail(order, order.user, 'pending', 'confirmed');
-    } catch (emailError) {
-      console.error('Failed to send order approval email:', emailError);
+      await notificationService.sendOrderStatusUpdate(order, order.user, 'pending', 'confirmed');
+      console.log('✅ Order approval notifications sent successfully');
+    } catch (notificationError) {
+      console.error('❌ Failed to send order approval notifications:', notificationError.message);
     }
     
     res.json({
@@ -709,11 +720,12 @@ exports.declineOrder = async (req, res) => {
     await order.save();
     await order.populate('user declinedBy');
     
-    // Send decline email notification
+    // Send decline notifications (Email + SMS)
     try {
-      await sendOrderStatusUpdateEmail(order, order.user, 'pending', 'declined');
-    } catch (emailError) {
-      console.error('Failed to send order decline email:', emailError);
+      await notificationService.sendOrderStatusUpdate(order, order.user, 'pending', 'declined');
+      console.log('✅ Order decline notifications sent successfully');
+    } catch (notificationError) {
+      console.error('❌ Failed to send order decline notifications:', notificationError.message);
     }
     
     res.json({
@@ -770,11 +782,12 @@ exports.requestReturn = async (req, res) => {
     await order.save();
     await order.populate('items.perfume user');
     
-    // Send return request email
+    // Send return request notifications (Email + SMS)
     try {
-      await sendReturnRequestEmail(order, order.user);
-    } catch (emailError) {
-      console.error('Failed to send return request email:', emailError);
+      await notificationService.sendReturnRequest(order, order.user);
+      console.log('✅ Return request notifications sent successfully');
+    } catch (notificationError) {
+      console.error('❌ Failed to send return request notifications:', notificationError.message);
     }
     
     res.json({

@@ -15,10 +15,10 @@ const Settings = () => {
   const [settings, setSettings] = useState({
     store: {
       name: 'OlfactiveEcho',
-      description: 'Premium Fragrance E-commerce Platform',
-      logo: '/olfactiveecho-mark.svg',
-      address: '',
-      phone: '',
+      description: 'Premium Fragrance E-commerce Platform - Whispers of Scent',
+      logo: '/logo.jpg',
+      address: 'Pillars Nagar, Erode, Tamil Nadu, India',
+      phone: '+91 99949 98675',
       email: 'admin@olfactiveecho.com',
       currency: 'INR',
       timezone: 'Asia/Kolkata'

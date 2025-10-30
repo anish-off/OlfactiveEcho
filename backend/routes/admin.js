@@ -9,6 +9,9 @@ const adminCategoryController = require('../controllers/adminCategoryController'
 const adminBrandController = require('../controllers/adminBrandController');
 const adminCouponController = require('../controllers/adminCouponController');
 const orderController = require('../controllers/orderController');
+const inventoryController = require('../controllers/inventoryController');
+const activityLogController = require('../controllers/activityLogController');
+const revenueAnalyticsController = require('../controllers/revenueAnalyticsController');
 
 // Apply admin authentication to all routes
 router.use(adminAuth);
@@ -61,5 +64,17 @@ router.get('/orders/:id', orderController.getOrderById);
 router.put('/orders/:id/status', orderController.updateOrderStatus);
 router.put('/orders/:id/approve', orderController.approveOrder);
 router.put('/orders/:id/decline', orderController.declineOrder);
+
+// Inventory management routes
+router.get('/inventory/overview', inventoryController.getInventoryOverview);
+router.get('/inventory/low-stock', inventoryController.getLowStockAlerts);
+router.get('/inventory/out-of-stock', inventoryController.getOutOfStock);
+
+// Activity log routes
+router.get('/activity-log', activityLogController.getActivityLogs);
+router.get('/activity-log/summary', activityLogController.getActivitySummary);
+
+// Revenue analytics routes
+router.get('/analytics/revenue', revenueAnalyticsController.getRevenueAnalytics);
 
 module.exports = router;

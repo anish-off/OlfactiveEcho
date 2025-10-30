@@ -12,6 +12,9 @@ import CustomerManagement from '../../components/admin/CustomerManagement';
 import CouponManagement from '../../components/admin/CouponManagement';
 import Analytics from '../../components/admin/Analytics';
 import Settings from '../../components/admin/Settings';
+import InventoryManagement from '../../components/admin/InventoryManagement';
+import ActivityLog from '../../components/admin/ActivityLog';
+import RevenueAnalytics from '../../components/admin/RevenueAnalytics';
 
 const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -57,12 +60,15 @@ const AdminDashboard = () => {
           <Routes>
             <Route path="/" element={<DashboardOverview />} />
             <Route path="/products/*" element={<ProductManagement />} />
+            <Route path="/inventory" element={<InventoryManagement />} />
             <Route path="/categories/*" element={<CategoryManagement />} />
             <Route path="/brands/*" element={<BrandManagement />} />
             <Route path="/orders/*" element={<OrderManagement />} />
             <Route path="/customers/*" element={<CustomerManagement />} />
             <Route path="/coupons/*" element={<CouponManagement />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/revenue" element={<RevenueAnalytics />} />
+            <Route path="/activity" element={<ActivityLog />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Routes>
