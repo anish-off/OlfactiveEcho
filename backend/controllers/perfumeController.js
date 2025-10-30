@@ -25,6 +25,12 @@ exports.getPerfumes = async (req, res) => {
       maxPrice, 
       seasons, 
       occasions,
+      notes, // NEW: Filter by fragrance notes
+      longevity, // NEW: Filter by longevity
+      sillage, // NEW: Filter by sillage
+      intensity, // NEW: Filter by intensity
+      rating, // NEW: Filter by minimum rating
+      inStock, // NEW: Only show in-stock items
       sortBy = 'rating',
       sortOrder = 'desc',
       page = 1,
@@ -34,12 +40,14 @@ exports.getPerfumes = async (req, res) => {
     // Build query object
     const query = {};
     
-    // Text search
+    // Text search with autocomplete support
     if (q) {
       query.$or = [
         { name: { $regex: q, $options: 'i' } },
         { 'brand.name': { $regex: q, $options: 'i' } },
-        { 'main_accords.name': { $regex: q, $options: 'i' } }
+        { 'main_accords.name': { $regex: q, $options: 'i' } },
+        { description: { $regex: q, $options: 'i' } },
+        { scentFamily: { $regex: q, $options: 'i' } }
       ];
     }
     
@@ -48,9 +56,16 @@ exports.getPerfumes = async (req, res) => {
       query.category = category;
     }
     
-    // Brand filter
+    // Brand filter - support multiple brands
     if (brand) {
-      query['brand.name'] = { $regex: brand, $options: 'i' };
+      const brandArray = Array.isArray(brand) ? brand : [brand];
+      if (brandArray.length === 1) {
+        query['brand.name'] = { $regex: brandArray[0], $options: 'i' };
+      } else {
+        query['brand.name'] = { 
+          $in: brandArray.map(b => new RegExp(b, 'i')) 
+        };
+      }
     }
     
     // Gender filter
@@ -58,9 +73,14 @@ exports.getPerfumes = async (req, res) => {
       query.gender = gender;
     }
     
-    // Scent family filter
+    // Scent family filter - support multiple
     if (scentFamily) {
-      query.scentFamily = scentFamily;
+      const familyArray = Array.isArray(scentFamily) ? scentFamily : [scentFamily];
+      if (familyArray.length === 1) {
+        query.scentFamily = familyArray[0];
+      } else {
+        query.scentFamily = { $in: familyArray };
+      }
     }
     
     // Price range filter
@@ -70,17 +90,59 @@ exports.getPerfumes = async (req, res) => {
       if (maxPrice) query.price.$lte = parseFloat(maxPrice);
     }
     
-    // Seasons filter
+    // Seasons filter - support multiple
     if (seasons) {
       const seasonArray = Array.isArray(seasons) ? seasons : [seasons];
       query.seasons = { $in: seasonArray };
     }
     
-    // Occasions filter  
+    // Occasions filter - support multiple
     if (occasions) {
       const occasionArray = Array.isArray(occasions) ? occasions : [occasions];
       query.occasions = { $in: occasionArray };
     }
+    
+    // Notes filter - search in all note types
+    if (notes) {
+      const noteArray = Array.isArray(notes) ? notes : [notes];
+      query.$or = query.$or || [];
+      noteArray.forEach(note => {
+        query.$or.push(
+          { 'notes.Top Notes.name': { $regex: note, $options: 'i' } },
+          { 'notes.Middle Notes.name': { $regex: note, $options: 'i' } },
+          { 'notes.Base Notes.name': { $regex: note, $options: 'i' } },
+          { 'notes.General Notes.name': { $regex: note, $options: 'i' } }
+        );
+      });
+    }
+    
+    // Longevity filter
+    if (longevity) {
+      query.longevity = longevity;
+    }
+    
+    // Sillage filter
+    if (sillage) {
+      query.sillage = sillage;
+    }
+    
+    // Intensity filter
+    if (intensity) {
+      query.intensity = intensity;
+    }
+    
+    // Rating filter - minimum rating
+    if (rating) {
+      query.rating = { $gte: parseFloat(rating) };
+    }
+    
+    // Stock filter - only in-stock items
+    if (inStock === 'true') {
+      query.stock = { $gt: 0 };
+    }
+    
+    // Count total for pagination
+    const total = await Perfume.countDocuments(query);
     
     // Pagination
     const pageNum = parseInt(page);
@@ -104,9 +166,6 @@ exports.getPerfumes = async (req, res) => {
       imageUrl: perfume.imageUrl || perfume.image_url || `/perfume-images/${perfume.name?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}.svg`
     }));
     
-    // Get total count for pagination
-    const total = await Perfume.countDocuments(query);
-    
     res.json({
       perfumes: perfumesWithImages,
       pagination: {
@@ -114,6 +173,13 @@ exports.getPerfumes = async (req, res) => {
         total: Math.ceil(total / limitNum),
         count: perfumesWithImages.length,
         totalItems: total
+      },
+      filters: {
+        applied: {
+          q, category, brand, gender, scentFamily, 
+          minPrice, maxPrice, seasons, occasions, 
+          notes, longevity, sillage, intensity, rating, inStock
+        }
       }
     });
   } catch (err) {
@@ -268,7 +334,156 @@ exports.getPerfumesByBrand = async (req, res) => {
       .sort({ name: 1 })
       .lean();
     
-    res.json(perfumes);
+    // Map image URLs for consistent frontend access
+    const perfumesWithImages = perfumes.map(perfume => ({
+      ...perfume,
+      imageUrl: perfume.imageUrl || perfume.image_url || `/perfume-images/${perfume.name?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}.svg`
+    }));
+    
+    res.json(perfumesWithImages);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Get search suggestions/autocomplete
+exports.getSearchSuggestions = async (req, res) => {
+  try {
+    const { q, limit = 10 } = req.query;
+    
+    if (!q || q.length < 2) {
+      return res.json({ suggestions: [] });
+    }
+    
+    const regex = new RegExp(q, 'i');
+    
+    // Search in perfume names
+    const nameMatches = await Perfume.find({ name: regex })
+      .select('name image_url')
+      .limit(5)
+      .lean();
+    
+    // Search in brand names
+    const brandMatches = await Perfume.aggregate([
+      { $match: { 'brand.name': regex } },
+      { $group: { _id: '$brand.name', count: { $sum: 1 } } },
+      { $limit: 3 }
+    ]);
+    
+    // Search in scent families
+    const familyMatches = await Perfume.aggregate([
+      { $match: { scentFamily: regex } },
+      { $group: { _id: '$scentFamily', count: { $sum: 1 } } },
+      { $limit: 2 }
+    ]);
+    
+    res.json({
+      suggestions: {
+        perfumes: nameMatches.map(p => ({ 
+          type: 'perfume', 
+          name: p.name, 
+          image: p.image_url,
+          id: p._id 
+        })),
+        brands: brandMatches.map(b => ({ 
+          type: 'brand', 
+          name: b._id, 
+          count: b.count 
+        })),
+        families: familyMatches.map(f => ({ 
+          type: 'family', 
+          name: f._id, 
+          count: f.count 
+        }))
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Get available filter options
+exports.getFilterOptions = async (req, res) => {
+  try {
+    // Get all unique brands
+    const brands = await Perfume.aggregate([
+      { $group: { _id: '$brand.name', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 50 }
+    ]);
+    
+    // Get all unique scent families
+    const scentFamilies = await Perfume.aggregate([
+      { $match: { scentFamily: { $exists: true, $ne: null } } },
+      { $group: { _id: '$scentFamily', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+    
+    // Get price range
+    const priceRange = await Perfume.aggregate([
+      {
+        $group: {
+          _id: null,
+          min: { $min: '$price' },
+          max: { $max: '$price' }
+        }
+      }
+    ]);
+    
+    // Get all unique notes
+    const notes = await Perfume.aggregate([
+      { $project: { allNotes: { $objectToArray: '$notes' } } },
+      { $unwind: '$allNotes' },
+      { $unwind: '$allNotes.v' },
+      { $group: { _id: '$allNotes.v.name', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 100 }
+    ]);
+    
+    res.json({
+      brands: brands.map(b => ({ name: b._id, count: b.count })),
+      scentFamilies: scentFamilies.map(s => ({ name: s._id, count: s.count })),
+      priceRange: priceRange[0] || { min: 0, max: 10000 },
+      notes: notes.map(n => ({ name: n._id, count: n.count })),
+      genders: [
+        { name: 'male', label: 'Men' },
+        { name: 'female', label: 'Women' },
+        { name: 'unisex', label: 'Unisex' }
+      ],
+      seasons: [
+        { name: 'spring', label: 'Spring' },
+        { name: 'summer', label: 'Summer' },
+        { name: 'autumn', label: 'Autumn' },
+        { name: 'winter', label: 'Winter' }
+      ],
+      occasions: [
+        { name: 'daily', label: 'Daily Wear' },
+        { name: 'office', label: 'Office' },
+        { name: 'evening', label: 'Evening' },
+        { name: 'party', label: 'Party' },
+        { name: 'romantic', label: 'Romantic' },
+        { name: 'formal', label: 'Formal' },
+        { name: 'casual', label: 'Casual' },
+        { name: 'sport', label: 'Sport' }
+      ],
+      longevity: [
+        { name: '2-4 hours', label: '2-4 hours' },
+        { name: '4-6 hours', label: '4-6 hours' },
+        { name: '6-8 hours', label: '6-8 hours' },
+        { name: '8+ hours', label: '8+ hours' }
+      ],
+      sillage: [
+        { name: 'intimate', label: 'Intimate' },
+        { name: 'moderate', label: 'Moderate' },
+        { name: 'strong', label: 'Strong' },
+        { name: 'enormous', label: 'Enormous' }
+      ],
+      intensity: [
+        { name: 'light', label: 'Light' },
+        { name: 'moderate', label: 'Moderate' },
+        { name: 'strong', label: 'Strong' }
+      ]
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

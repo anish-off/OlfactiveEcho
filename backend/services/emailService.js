@@ -536,9 +536,148 @@ const sendOrderStatusUpdateEmail = async (order, user, oldStatus, newStatus) => 
   }
 };
 
+// Send return request email
+const sendReturnRequestEmail = async (order, user) => {
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || 'OlfactiveEcho <noreply@olfactiveecho.com>',
+    to: user.email,
+    subject: `Return Request Submitted #${order._id.toString().slice(-8).toUpperCase()} - OlfactiveEcho`,
+    html: `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Return Request - OlfactiveEcho</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; }
+            .footer { background: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 8px 8px; }
+            .button { display: inline-block; background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Return Request Submitted</h1>
+                <p>We've received your return request</p>
+            </div>
+            
+            <div class="content">
+                <h2>Order #${order._id.toString().slice(-8).toUpperCase()}</h2>
+                <p>Dear ${user.name},</p>
+                <p>We've received your return request for your recent order. Here are the details:</p>
+                
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                    <h4>Return Request Details</h4>
+                    <p><strong>Order ID:</strong> #${order._id.toString().slice(-8).toUpperCase()}</p>
+                    <p><strong>Request Date:</strong> ${new Date(order.returnRequest.requestedAt).toLocaleDateString()}</p>
+                    <p><strong>Reason:</strong> ${order.returnRequest.reason}</p>
+                    <p><strong>Status:</strong> Under Review</p>
+                </div>
+                
+                <p><strong>What happens next?</strong></p>
+                <ul>
+                    <li>Our team will review your return request within 1-2 business days</li>
+                    <li>If approved, we'll email you return instructions and a prepaid shipping label</li>
+                    <li>Once we receive the returned items, we'll process your refund within 3-5 business days</li>
+                </ul>
+                
+                <div style="text-align: center;">
+                    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/orders/${order._id}" class="button">
+                        View Order Details
+                    </a>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>Thank you for choosing OlfactiveEcho!</p>
+                <p>If you have any questions, reply to this email or contact us at support@olfactiveecho.com</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    `
+  };
+
+  const transporter = await createTransporter();
+  return await transporter.sendMail(mailOptions);
+};
+
+// Send delivery failed email
+const sendDeliveryFailedEmail = async (order, user, reason, nextAttemptDate) => {
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || 'OlfactiveEcho <noreply@olfactiveecho.com>',
+    to: user.email,
+    subject: `Delivery Update #${order._id.toString().slice(-8).toUpperCase()} - OlfactiveEcho`,
+    html: `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Delivery Update - OlfactiveEcho</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; }
+            .footer { background: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 8px 8px; }
+            .button { display: inline-block; background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🚛 Delivery Update</h1>
+                <p>We attempted to deliver your order</p>
+            </div>
+            
+            <div class="content">
+                <h2>Order #${order._id.toString().slice(-8).toUpperCase()}</h2>
+                <p>Dear ${user.name},</p>
+                <p>We attempted to deliver your order today, but were unable to complete the delivery.</p>
+                
+                <div style="background: #fef3c7; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+                    <h4>Delivery Details</h4>
+                    <p><strong>Reason:</strong> ${reason}</p>
+                    ${nextAttemptDate ? `<p><strong>Next Attempt:</strong> ${new Date(nextAttemptDate).toLocaleDateString()}</p>` : ''}
+                    ${order.trackingNumber ? `<p><strong>Tracking Number:</strong> ${order.trackingNumber}</p>` : ''}
+                </div>
+                
+                <p><strong>What you can do:</strong></p>
+                <ul>
+                    <li>Ensure someone is available at the delivery address during business hours</li>
+                    <li>Contact us if you need to change the delivery address</li>
+                    <li>Track your package using the tracking number above</li>
+                </ul>
+                
+                <div style="text-align: center;">
+                    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/orders/${order._id}" class="button">
+                        Track Your Order
+                    </a>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>Thank you for your patience!</p>
+                <p>Contact us at support@olfactiveecho.com for any questions</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    `
+  };
+
+  const transporter = await createTransporter();
+  return await transporter.sendMail(mailOptions);
+};
+
 module.exports = {
   sendOrderConfirmationEmail,
   sendOrderStatusUpdateEmail,
+  sendReturnRequestEmail,
+  sendDeliveryFailedEmail,
   sendPasswordResetEmail,
   isRetryableError
 };

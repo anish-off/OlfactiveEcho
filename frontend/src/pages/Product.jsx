@@ -3,6 +3,8 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Footer from '@/components/Footer';
 import LoginRedirectWrapper from '@/components/login/LoginRedirectWrapper';
 import SampleSection from '@/components/product/SampleSection';
+import ReviewList from '@/components/product/ReviewList';
+import RatingStars from '@/components/product/RatingStars';
 import { getPerfume, listPerfumes } from '@/api/perfume';
 import { useCart } from '@/context/CartContext';
 import { getImageWithFallbacks, getProxiedImageUrl } from '@/utils/imageUtils';
@@ -49,8 +51,40 @@ const Product = () => {
   },[id]);
 
   const productImages = useMemo(()=>{
-    const img = getProxiedImageUrl(getImageWithFallbacks(product));
-    return [img, img, img, img, img];
+    if (!product) return [];
+    
+    // Collect unique image URLs
+    const uniqueUrls = new Set();
+    
+    // Add main image first
+    if (product.image_url) {
+      uniqueUrls.add(product.image_url);
+    }
+    
+    // Add all photos from array
+    if (product.photos && Array.isArray(product.photos)) {
+      product.photos.forEach(photo => {
+        if (photo && typeof photo === 'string' && photo.trim()) {
+          uniqueUrls.add(photo);
+        }
+      });
+    }
+    
+    // Convert to array and take first 5
+    const finalUrls = Array.from(uniqueUrls).slice(0, 5);
+    
+    // Proxy URLs
+    const proxiedUrls = finalUrls.map(url => getProxiedImageUrl(url));
+    
+    // Fill to 5 images if needed
+    const fallbackImg = proxiedUrls[0] || getProxiedImageUrl(getImageWithFallbacks(product));
+    while (proxiedUrls.length < 5) {
+      proxiedUrls.push(fallbackImg);
+    }
+    
+    console.log(`🖼️ ${product?.name}: ${uniqueUrls.size} unique → ${new Set(proxiedUrls).size} different thumbnails`);
+    
+    return proxiedUrls;
   },[product]);
 
   const sizes = useMemo(()=> product ? [
@@ -486,6 +520,20 @@ const Product = () => {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Customer Reviews Section */}
+          <div className="mb-16">
+            <div className="text-center mb-8">
+              <h2 className="font-bold text-3xl text-[#8C501B] mb-4">Customer Reviews</h2>
+              <div className="w-20 h-1 bg-[#F2C84B] mx-auto rounded-full"></div>
+              {product?.rating > 0 && (
+                <div className="mt-4 flex items-center justify-center gap-3">
+                  <RatingStars rating={product.rating} size="lg" showCount reviewCount={product.reviewCount} />
+                </div>
+              )}
+            </div>
+            <ReviewList perfumeId={id} />
           </div>
 
           {/* Related Products */}

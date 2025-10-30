@@ -24,6 +24,7 @@ import AccountSettings from './pages/AccountSettings'; // Added missing import
 import WishlistPage from './pages/WishlistPage'; // Added missing import
 import PerfumeFinder from './pages/PerfumeFinder';
 import Orders from './pages/Orders';
+import OrderTracking from './pages/OrderTracking'; // New comprehensive tracking page
 import UserOrderDetails from './components/user/UserOrderDetails';
 import OrderConfirmation from './components/order/OrderConfirmation';
 import ScentMatcher from './pages/ScentMatcher';
@@ -35,6 +36,7 @@ import AdminRoute from './components/AdminRoute';
 import ScrollToTop from './components/ScrollToTop';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserOnlyRoute from './components/UserOnlyRoute';
+import ComparisonBar from './components/product/ComparisonBar';
 
 // Import Advanced Offer Components
 import AdvancedOffersBanner from './components/discount/AdvancedOffersBanner';
@@ -80,7 +82,8 @@ const AppContent = () => {
         <Route element={<ProtectedRoute><LayoutWithSidebar /></ProtectedRoute>}>
           <Route path="/profile" element={<Profile />} />
           <Route path="/orders" element={<Orders />} />
-          <Route path="/orders/:id" element={<UserOrderDetails />} /> 
+          <Route path="/orders/:id/tracking" element={<OrderTracking />} /> {/* New comprehensive tracking */}
+          <Route path="/orders/:id" element={<UserOrderDetails />} /> {/* Keep for backward compatibility */}
           <Route path="/wishlist" element={<WishlistPage />} /> 
           <Route path="/cart" element={<Cart />} />
           <Route path="/settings" element={<AccountSettings />} /> 
@@ -101,6 +104,9 @@ const AppContent = () => {
       
       {/* Floating Offer Notification Panel - Show on all user pages */}
       {isLoggedIn && user?.role !== 'admin' && <OfferNotificationPanel />}
+      
+      {/* Comparison Bar - Show on all user pages */}
+      {isLoggedIn && user?.role !== 'admin' && <ComparisonBar />}
     </>
   );
 };

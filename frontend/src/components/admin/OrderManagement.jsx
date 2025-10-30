@@ -19,6 +19,7 @@ const OrderManagement = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [actionLoading, setActionLoading] = useState({});
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
+  const [trackingModal, setTrackingModal] = useState({ show: false, order: null });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -61,8 +62,9 @@ const OrderManagement = () => {
     }
   };
 
-  const updateOrderStatus = async (orderId, newStatus) => {
+  const updateOrderStatus = async (orderId, newStatus, trackingData = {}) => {
     try {
+      setActionLoading(prev => ({ ...prev, [orderId]: 'updating' }));
       const token = localStorage.getItem('token');
       const response = await fetch(`/api/admin/orders/${orderId}/status`, {
         method: 'PUT',
@@ -70,14 +72,23 @@ const OrderManagement = () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ 
+          status: newStatus,
+          ...trackingData
+        })
       });
 
       if (response.ok) {
         fetchOrders();
+        showToast(`Order status updated to ${newStatus}`, 'success');
+      } else {
+        showToast('Failed to update order status', 'error');
       }
     } catch (error) {
       console.error('Error updating order status:', error);
+      showToast('Failed to update order status', 'error');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [orderId]: null }));
     }
   };
 
@@ -87,9 +98,12 @@ const OrderManagement = () => {
       confirmed: 'bg-blue-100 text-blue-800',
       processing: 'bg-purple-100 text-purple-800',
       shipped: 'bg-indigo-100 text-indigo-800',
+      out_for_delivery: 'bg-orange-100 text-orange-800',
       delivered: 'bg-green-100 text-green-800',
       cancelled: 'bg-red-100 text-red-800',
-      declined: 'bg-red-100 text-red-800'
+      declined: 'bg-red-100 text-red-800',
+      returned: 'bg-gray-100 text-gray-800',
+      refunded: 'bg-gray-100 text-gray-800'
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };

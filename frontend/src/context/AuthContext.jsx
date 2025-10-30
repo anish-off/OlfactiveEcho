@@ -82,8 +82,19 @@ export const AuthProvider = ({ children }) => {
     toast.success('Logged out');
   };
 
+  const refreshUser = async () => {
+    try {
+      const { user: me } = await fetchMe();
+      persistUser(me);
+      return me;
+    } catch (e) {
+      console.error('Failed to refresh user:', e);
+      throw e;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoggedIn: !!user, login, register, logout, loading, setAuthUser: persistUser }}>
+    <AuthContext.Provider value={{ user, isLoggedIn: !!user, login, register, logout, loading, setAuthUser: persistUser, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

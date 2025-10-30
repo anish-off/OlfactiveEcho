@@ -11,7 +11,9 @@ const {
   getNewPerfumes,
   getPerfumesByBrand,
   getBrands,
-  getPerfumeStats
+  getPerfumeStats,
+  getSearchSuggestions,
+  getFilterOptions
 } = require('../controllers/perfumeController');
 const { auth, requireAdmin } = require('../middleware/authMiddleware');
 
@@ -21,6 +23,8 @@ router.get('/popular', getPopularPerfumes);
 router.get('/new', getNewPerfumes);
 router.get('/brands', getBrands);
 router.get('/stats', getPerfumeStats);
+router.get('/search/suggestions', getSearchSuggestions);
+router.get('/filters/options', getFilterOptions);
 router.get('/brand/:brandName', getPerfumesByBrand);
 router.get('/:id', getPerfume);
 

@@ -2,7 +2,7 @@ const Order = require('../models/Order');
 const Perfume = require('../models/Perfume');
 const User = require('../models/User');
 const mongoose = require('mongoose');
-const { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail } = require('../services/emailService');
+const { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail, sendReturnRequestEmail, sendDeliveryFailedEmail } = require('../services/emailService');
 
 // Calculate shipping based on order value and location
 const calculateShipping = (subtotal, shippingAddress) => {
@@ -52,7 +52,15 @@ exports.checkout = async (req, res) => {
     validateCheckoutData(items, shippingAddress, billingAddress);
     
     // Fetch perfumes and validate availability
-    const perfumeIds = items.map(i => i.perfume || i.id);
+    const perfumeIds = items.map(i => {
+      let id = i.perfume || i.id;
+      // Extract the original ObjectId from sample ID (remove _sample_2ml suffix)
+      if (typeof id === 'string' && id.includes('_sample_')) {
+        id = id.split('_sample_')[0];
+      }
+      return id;
+    }).filter(id => mongoose.Types.ObjectId.isValid(id)); // Only keep valid ObjectIds
+    
     const perfumeDocs = await Perfume.find({ _id: { $in: perfumeIds } });
     const perfumeMap = perfumeDocs.reduce((acc, p) => { acc[p._id] = p; return acc; }, {});
     
@@ -67,7 +75,13 @@ exports.checkout = async (req, res) => {
     
     // Process regular perfume items
     for (const item of regularItems) {
-      const perfumeId = item.perfume || item.id;
+      let perfumeId = item.perfume || item.id;
+      
+      // Extract the original ObjectId from sample ID (remove _sample_2ml suffix)
+      if (typeof perfumeId === 'string' && perfumeId.includes('_sample_')) {
+        perfumeId = perfumeId.split('_sample_')[0];
+      }
+      
       const perfume = perfumeMap[perfumeId];
       
       if (!perfume) {
@@ -94,7 +108,18 @@ exports.checkout = async (req, res) => {
     
     // Process sample items with free sample logic
     for (const sampleItem of sampleItems) {
-      const sampleId = sampleItem.perfume || sampleItem.id || sampleItem.originalProductId;
+      let sampleId = sampleItem.perfume || sampleItem.id || sampleItem.originalProductId;
+      
+      // Extract the original ObjectId from sample ID (remove _sample_2ml suffix)
+      if (typeof sampleId === 'string' && sampleId.includes('_sample_')) {
+        sampleId = sampleId.split('_sample_')[0];
+      }
+      
+      // Validate that it's a proper ObjectId
+      if (!mongoose.Types.ObjectId.isValid(sampleId)) {
+        console.warn('Invalid sample ObjectId, skipping:', sampleId);
+        continue;
+      }
       
       // For samples, we might need to get the original product or use sample-specific pricing
       let samplePrice = sampleItem.price || 0;
@@ -104,10 +129,10 @@ exports.checkout = async (req, res) => {
         samplePrice = 0; // Free samples for orders ≥ ₹5000
       }
       
-      sampleSubtotal += samplePrice * sampleItem.quantity;
+      sampleSubtotal += samplePrice * (sampleItem.quantity || 1);
       
       orderSamples.push({
-        originalProductId: sampleItem.originalProductId || sampleId,
+        originalProductId: sampleId, // Use cleaned ObjectId
         sampleSize: sampleItem.sampleSize || '2ml',
         quantity: sampleItem.quantity,
         price: samplePrice,
@@ -197,6 +222,56 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ message: 'Items required' });
     }
     
+    // Process items to handle samples with invalid ObjectIds
+    const processedItems = [];
+    const processedSamples = [];
+    
+    for (const item of items) {
+      if (item.isSample || item.product?.isSample) {
+        // This is a sample item
+        let sampleId = item.perfume || item.id || item.originalProductId;
+        
+        // Extract the original ObjectId from sample ID (remove _sample_2ml suffix)
+        if (typeof sampleId === 'string' && sampleId.includes('_sample_')) {
+          sampleId = sampleId.split('_sample_')[0];
+        }
+        
+        // Validate that it's a proper ObjectId
+        if (mongoose.Types.ObjectId.isValid(sampleId)) {
+          processedSamples.push({
+            originalProductId: sampleId,
+            sampleSize: item.sampleSize || '2ml',
+            quantity: item.quantity || 1,
+            price: item.price || 0,
+            isFree: item.isFree || false
+          });
+        } else {
+          console.warn('Invalid sample ObjectId, skipping:', sampleId);
+        }
+      } else {
+        // This is a regular item
+        let perfumeId = item.perfume || item.id;
+        
+        // Clean perfume ID if it has sample suffix (shouldn't happen for regular items, but just in case)
+        if (typeof perfumeId === 'string' && perfumeId.includes('_sample_')) {
+          perfumeId = perfumeId.split('_sample_')[0];
+        }
+        
+        if (mongoose.Types.ObjectId.isValid(perfumeId)) {
+          processedItems.push({
+            perfume: perfumeId,
+            quantity: item.quantity,
+            price: item.price
+          });
+        } else {
+          console.warn('Invalid perfume ObjectId, skipping:', perfumeId);
+        }
+      }
+    }
+    
+    console.log('📋 Processed items:', processedItems);
+    console.log('📋 Processed samples:', processedSamples);
+    
     // For COD, no payment validation needed
     // For online payment, validate paymentId
     if (paymentMethod === 'online' && !paymentId) {
@@ -221,7 +296,8 @@ exports.createOrder = async (req, res) => {
     // Create order
     const order = await Order.create({ 
       user: req.user._id, 
-      items, 
+      items: processedItems, // Use processed items instead of raw items
+      samples: processedSamples, // Use processed samples
       sample: cleanSampleData,
       total,
       subtotal,
@@ -365,30 +441,43 @@ exports.getOrderById = async (req, res) => {
 // Update order status (admin only)
 exports.updateOrderStatus = async (req, res) => {
   try {
-    const { status, trackingNumber } = req.body;
-    const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+    const { status, trackingNumber, carrier, location, note } = req.body;
+    const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'declined', 'returned', 'refunded'];
     
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
     
-    const updateData = { status };
-    if (trackingNumber && status === 'shipped') {
-      updateData.trackingNumber = trackingNumber;
-    }
-    
-    const oldOrder = await Order.findById(req.params.id);
-    const oldStatus = oldOrder.status;
-    
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true }
-    ).populate('items.perfume sample.samplePerfume user');
-    
+    const order = await Order.findById(req.params.id);
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
+    
+    const oldStatus = order.status;
+    
+    // Set the user who updated the status
+    order._statusUpdatedBy = req.user._id;
+    order.status = status;
+    
+    // Update tracking info if provided
+    if (trackingNumber) {
+      order.trackingNumber = trackingNumber;
+    }
+    if (carrier) {
+      order.carrier = carrier;
+      // Generate tracking URL based on carrier
+      order.trackingUrl = generateTrackingUrl(carrier, trackingNumber);
+    }
+    
+    // Add location and note to status history
+    if (order.statusHistory.length > 0) {
+      const lastEntry = order.statusHistory[order.statusHistory.length - 1];
+      if (location) lastEntry.location = location;
+      if (note) lastEntry.note = note;
+    }
+    
+    await order.save();
+    await order.populate('items.perfume sample.samplePerfume user');
     
     // Send status update email if status changed
     if (oldStatus !== status) {
@@ -411,27 +500,33 @@ exports.updateOrderStatus = async (req, res) => {
   }
 };
 
+// Generate tracking URL based on carrier
+const generateTrackingUrl = (carrier, trackingNumber) => {
+  const trackingUrls = {
+    'BlueDart': `https://www.bluedart.com/web/guest/trackdartresult?trackFor=0&trackNo=${trackingNumber}`,
+    'FedEx': `https://www.fedex.com/fedextrack/?action=track&trackingnumber=${trackingNumber}`,
+    'DHL': `https://www.dhl.com/in-en/home/tracking/tracking-express.html?submit=1&tracking-id=${trackingNumber}`,
+    'India Post': `https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/TrackConsignment.aspx?ConsignmentNo=${trackingNumber}`,
+    'DTDC': `https://www.dtdc.in/tracking/tracking_results.asp?Ttype=awb_no&strCnno=${trackingNumber}`,
+    'Ecom Express': `https://ecomexpress.in/tracking/?awb_field=${trackingNumber}`,
+    'Delhivery': `https://www.delhivery.com/track/package/${trackingNumber}`
+  };
+  
+  return trackingUrls[carrier] || null;
+};
+
 // Cancel order (user can cancel their own pending orders)
 exports.cancelOrder = async (req, res) => {
   try {
+    const { reason } = req.body;
     console.log('Cancel order request:', {
       orderId: req.params.id,
       userId: req.user._id,
-      userRole: req.user.role
+      userRole: req.user.role,
+      reason
     });
 
     const order = await Order.findById(req.params.id);
-    
-    console.log('Order lookup result:', order ? 'Found' : 'Not found');
-    if (order) {
-      console.log('Order details:', {
-        id: order._id,
-        user: order.user,
-        status: order.status,
-        userIdType: typeof order.user,
-        userIdConstructor: order.user.constructor.name
-      });
-    }
     
     if (!order) {
       console.log('Order not found:', req.params.id);
@@ -441,15 +536,7 @@ exports.cancelOrder = async (req, res) => {
       });
     }
     
-    console.log('Order found:', {
-      orderId: order._id,
-      orderUserId: order.user,
-      orderStatus: order.status,
-      requestUserId: req.user._id
-    });
-    
     // Users can only cancel their own orders
-    // Handle both string and ObjectId comparisons
     const orderUserId = order.user.toString ? order.user.toString() : order.user;
     const requestUserId = req.user._id.toString ? req.user._id.toString() : req.user._id;
     
@@ -461,19 +548,36 @@ exports.cancelOrder = async (req, res) => {
       });
     }
     
-    // Only pending orders can be cancelled
-    if (order.status !== 'pending') {
-      console.log('Order cannot be cancelled - status:', order.status);
+    // Check if order can be cancelled
+    if (!order.canBeCancelled()) {
       return res.status(400).json({ 
         success: false,
-        message: `Order cannot be cancelled. Current status: ${order.status}. Only pending orders can be cancelled.` 
+        message: `Order cannot be cancelled. Current status: ${order.status}. ${
+          order.cancellationDeadline && new Date() > order.cancellationDeadline 
+            ? 'Cancellation deadline has passed.' 
+            : 'Only pending or confirmed orders can be cancelled.'
+        }` 
       });
     }
     
+    // Set cancellation details
+    order._statusUpdatedBy = req.user._id;
     order.status = 'cancelled';
-    await order.save();
+    order.cancellationReason = reason || 'No reason provided';
+    order.cancelledBy = req.user._id;
+    order.cancelledAt = new Date();
+    order.canCancel = false;
     
+    await order.save();
     await order.populate('items.perfume sample.samplePerfume');
+    
+    // Send cancellation email
+    try {
+      const user = await User.findById(req.user._id);
+      await sendOrderStatusUpdateEmail(order, user, order.statusHistory[order.statusHistory.length - 2]?.status || 'confirmed', 'cancelled');
+    } catch (emailError) {
+      console.error('Failed to send cancellation email:', emailError);
+    }
     
     console.log('Order cancelled successfully:', order._id);
     
@@ -623,5 +727,236 @@ exports.declineOrder = async (req, res) => {
       success: false, 
       message: err.message 
     });
+  }
+};
+
+// Request return for delivered order
+exports.requestReturn = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const order = await Order.findById(req.params.id);
+    
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    
+    // Users can only request returns for their own orders
+    if (order.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    
+    // Only delivered orders can be returned
+    if (order.status !== 'delivered') {
+      return res.status(400).json({ message: 'Only delivered orders can be returned' });
+    }
+    
+    // Check if return period is still valid (7 days)
+    const deliveryDate = order.actualDeliveryDate || order.updatedAt;
+    const returnDeadline = new Date(deliveryDate);
+    returnDeadline.setDate(returnDeadline.getDate() + 7);
+    
+    if (new Date() > returnDeadline) {
+      return res.status(400).json({ message: 'Return period has expired (7 days from delivery)' });
+    }
+    
+    // Update return request
+    order.returnRequest = {
+      requested: true,
+      requestedAt: new Date(),
+      reason: reason || 'No reason provided',
+      status: 'pending'
+    };
+    
+    await order.save();
+    await order.populate('items.perfume user');
+    
+    // Send return request email
+    try {
+      await sendReturnRequestEmail(order, order.user);
+    } catch (emailError) {
+      console.error('Failed to send return request email:', emailError);
+    }
+    
+    res.json({
+      success: true,
+      order,
+      message: 'Return request submitted successfully'
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Get order tracking timeline
+exports.getOrderTimeline = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('statusHistory.updatedBy', 'name email')
+      .populate('user', 'name email');
+      
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    
+    // Users can only view their own order timeline
+    if (order.user._id.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    
+    // Create comprehensive timeline including creation
+    const timeline = [
+      {
+        status: 'pending',
+        timestamp: order.createdAt,
+        location: 'Order Management System',
+        note: 'Order placed successfully',
+        updatedBy: order.user
+      },
+      ...order.statusHistory
+    ];
+    
+    res.json({
+      success: true,
+      timeline,
+      currentStatus: order.getCurrentStatusInfo(),
+      trackingInfo: {
+        trackingNumber: order.trackingNumber,
+        carrier: order.carrier,
+        trackingUrl: order.trackingUrl,
+        estimatedDelivery: order.estimatedDeliveryDate,
+        actualDelivery: order.actualDeliveryDate
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Reorder - create new order based on existing order
+exports.reorder = async (req, res) => {
+  try {
+    const originalOrder = await Order.findById(req.params.id).populate('items.perfume');
+    
+    if (!originalOrder) {
+      return res.status(404).json({ message: 'Original order not found' });
+    }
+    
+    // Users can only reorder their own orders
+    if (originalOrder.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    
+    // Check availability of items
+    const availableItems = [];
+    const unavailableItems = [];
+    
+    for (const item of originalOrder.items) {
+      const perfume = await Perfume.findById(item.perfume._id);
+      if (perfume && perfume.stock >= item.quantity) {
+        availableItems.push({
+          perfume: perfume._id,
+          quantity: item.quantity,
+          price: perfume.price // Use current price
+        });
+      } else {
+        unavailableItems.push({
+          name: item.perfume.name,
+          requestedQuantity: item.quantity,
+          availableStock: perfume ? perfume.stock : 0
+        });
+      }
+    }
+    
+    if (unavailableItems.length > 0) {
+      return res.json({
+        success: false,
+        message: 'Some items are not available for reorder',
+        availableItems,
+        unavailableItems,
+        canProceed: availableItems.length > 0
+      });
+    }
+    
+    // Calculate new totals
+    const subtotal = availableItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const shipping = calculateShipping(subtotal, originalOrder.shippingAddress);
+    const tax = calculateTax(subtotal, originalOrder.shippingAddress);
+    const total = subtotal + shipping + tax;
+    
+    // Create new order
+    const newOrder = await Order.create({
+      user: req.user._id,
+      items: availableItems,
+      subtotal,
+      shipping,
+      tax,
+      total,
+      shippingAddress: originalOrder.shippingAddress,
+      billingAddress: originalOrder.billingAddress,
+      paymentMethod: originalOrder.paymentMethod,
+      status: 'pending',
+      tags: ['reorder'],
+      internalNotes: `Reordered from #${originalOrder._id.toString().slice(-8)}`
+    });
+    
+    await newOrder.populate('items.perfume');
+    
+    res.json({
+      success: true,
+      order: newOrder,
+      message: 'Order recreated successfully',
+      originalOrderId: originalOrder._id
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Add delivery attempt (for logistics partners)
+exports.addDeliveryAttempt = async (req, res) => {
+  try {
+    const { status, reason, nextAttemptDate } = req.body;
+    const order = await Order.findById(req.params.id);
+    
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    
+    order.deliveryAttempts.push({
+      date: new Date(),
+      status: status || 'attempted',
+      reason,
+      nextAttemptDate: nextAttemptDate ? new Date(nextAttemptDate) : null
+    });
+    
+    // Update order status based on attempt
+    if (status === 'delivered') {
+      order._statusUpdatedBy = req.user._id;
+      order.status = 'delivered';
+      order.actualDeliveryDate = new Date();
+    } else if (status === 'failed') {
+      order._statusUpdatedBy = req.user._id;
+      order.status = 'out_for_delivery'; // Keep as out for delivery for retry
+    }
+    
+    await order.save();
+    await order.populate('user');
+    
+    // Send notification for failed delivery
+    if (status === 'failed') {
+      try {
+        await sendDeliveryFailedEmail(order, order.user, reason, nextAttemptDate);
+      } catch (emailError) {
+        console.error('Failed to send delivery failed email:', emailError);
+      }
+    }
+    
+    res.json({
+      success: true,
+      order,
+      message: 'Delivery attempt recorded successfully'
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };

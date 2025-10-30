@@ -21,11 +21,13 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import LoginRedirectWrapper from './login/LoginRedirectWrapper';
+import SearchBar from './product/SearchBar';
 
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const { isLoggedIn, user, logout } = useAuth();
   const { items: cartItems, subtotal } = useCart();
   const navigate = useNavigate();
@@ -97,6 +99,14 @@ const Navbar = () => {
         duration: 5000,
         position: 'top-center',
       });
+    }
+  };
+
+  const handleSearch = (query) => {
+    if (query.trim()) {
+      navigate(`/products?search=${encodeURIComponent(query)}`);
+      setShowSearch(false);
+      closeAllDropdowns();
     }
   };
 
@@ -189,10 +199,10 @@ const Navbar = () => {
               {/* Search, Cart, and Wishlist - Only show when logged in */}
               {isLoggedIn && (
                 <>
-                  {/* Search */}
+                  {/* Search Toggle - Desktop */}
                   <button 
-                    className="p-2 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all duration-200"
-                    onClick={(e) => handleAuthRequired(e, 'use search')}
+                    className="hidden lg:block p-2 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all duration-200"
+                    onClick={() => setShowSearch(!showSearch)}
                   >
                     <Search className="h-5 w-5" />
                   </button>
@@ -401,6 +411,19 @@ const Navbar = () => {
         {mobileMenuOpen && (
           <div className="lg:hidden bg-white border-t border-gray-100 shadow-lg">
             <div className="px-4 py-6 space-y-4">
+              {/* Mobile Search Bar */}
+              {isLoggedIn && (
+                <div className="mb-4">
+                  <SearchBar 
+                    onSearch={(query) => {
+                      handleSearch(query);
+                      setMobileMenuOpen(false);
+                    }}
+                    placeholder="Search perfumes..."
+                  />
+                </div>
+              )}
+
               {/* Mobile Navigation Links */}
               <nav className="space-y-2">
                 <Link
@@ -540,10 +563,22 @@ const Navbar = () => {
             </div>
           </div>
         )}
+
+        {/* Search Bar Overlay - Desktop */}
+        {showSearch && isLoggedIn && (
+          <div className="hidden lg:block border-t border-gray-100 bg-white/95 backdrop-blur-md">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+              <SearchBar 
+                onSearch={handleSearch}
+                placeholder="Search perfumes, brands, notes..."
+              />
+            </div>
+          </div>
+        )}
       </header>
       
       {/* Spacer for fixed navbar */}
-      <div className="h-16"></div>
+      <div className={`transition-all duration-300 ${showSearch && isLoggedIn ? 'h-32' : 'h-16'}`}></div>
     </>
   );
 };

@@ -311,10 +311,20 @@ const Checkout = () => {
       // Try to validate with backend, but proceed even if it fails
       try {
         const checkoutData = {
-          items: validItems.map(item => ({
-            perfume: item.id || item.product._id,
-            quantity: item.quantity || 1
-          })),
+          items: validItems.map(item => {
+            let perfumeId = item.id || item.product._id;
+            // Clean sample ID suffix if present
+            if (typeof perfumeId === 'string' && perfumeId.includes('_sample_')) {
+              perfumeId = perfumeId.split('_sample_')[0];
+            }
+            return {
+              perfume: perfumeId,
+              quantity: item.quantity || 1,
+              isSample: item.isSample || false,
+              sampleSize: item.sampleSize,
+              price: item.price
+            };
+          }),
           shippingAddress,
           billingAddress: sameAsShipping ? shippingAddress : billingAddress,
           paymentMethod,

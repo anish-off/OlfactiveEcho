@@ -35,6 +35,14 @@ const ProductsAll = () => {
   const genderFilter = searchParams.get('gender');
   const familyFilter = searchParams.get('family');
   const brandFilter = searchParams.get('brand');
+  const urlSearchTerm = searchParams.get('search');
+
+  // Sync URL search param with local search term
+  useEffect(() => {
+    if (urlSearchTerm) {
+      setSearchTerm(urlSearchTerm);
+    }
+  }, [urlSearchTerm]);
 
   // Utility function to clean perfume names by removing gender specifications
   const cleanPerfumeName = (name) => {

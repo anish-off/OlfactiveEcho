@@ -3,7 +3,19 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { register, login, me, forgotPassword, resetPassword } = require('../controllers/authController');
+const { 
+  register, 
+  login, 
+  me, 
+  forgotPassword, 
+  resetPassword,
+  updateProfile,
+  changePassword,
+  addAddress,
+  updateAddress,
+  deleteAddress,
+  updatePreferences
+} = require('../controllers/authController');
 const { auth } = require('../middleware/authMiddleware');
 
 // ensure uploads dir
@@ -19,10 +31,19 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 2 * 1024 * 1024 } });
 
+// Public routes
 router.post('/register', upload.single('avatar'), register);
 router.post('/login', login);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password/:token', resetPassword);
+
+// Protected routes
 router.get('/me', auth, me);
+router.put('/profile', auth, updateProfile);
+router.put('/change-password', auth, changePassword);
+router.post('/addresses', auth, addAddress);
+router.put('/addresses/:addressId', auth, updateAddress);
+router.delete('/addresses/:addressId', auth, deleteAddress);
+router.put('/preferences', auth, updatePreferences);
 
 module.exports = router;

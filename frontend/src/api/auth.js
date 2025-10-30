@@ -31,3 +31,33 @@ export const resetPassword = async (token, password) => {
   if (res.data.token) setAuthToken(res.data.token);
   return res.data;
 };
+
+export const updateProfile = async (data) => {
+  const res = await apiClient.put('/auth/profile', data);
+  return res.data;
+};
+
+export const changePassword = async (data) => {
+  const res = await apiClient.put('/auth/change-password', data);
+  return res.data;
+};
+
+export const addAddress = async (data) => {
+  const res = await apiClient.post('/auth/addresses', data);
+  return res.data;
+};
+
+export const updateAddress = async (addressId, data) => {
+  const res = await apiClient.put(`/auth/addresses/${addressId}`, data);
+  return res.data;
+};
+
+export const deleteAddress = async (addressId) => {
+  const res = await apiClient.delete(`/auth/addresses/${addressId}`);
+  return res.data;
+};
+
+export const updatePreferences = async (data) => {
+  const res = await apiClient.put('/auth/preferences', data);
+  return res.data;
+};

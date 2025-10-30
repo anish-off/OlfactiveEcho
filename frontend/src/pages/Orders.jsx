@@ -10,7 +10,13 @@ import {
   ClockIcon,
   ShoppingBagIcon,
   CreditCardIcon,
-  CalendarIcon
+  CalendarIcon,
+  ArrowPathIcon,
+  HomeIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  ExclamationTriangleIcon,
+  MapPinIcon
 } from '@heroicons/react/24/outline';
 
 const formatCurrency = (v) => `₹${(v ?? 0).toFixed(2)}`;
@@ -30,9 +36,12 @@ const getStatusColor = (status) => {
     confirmed: 'bg-blue-100 text-blue-800 border-blue-200',
     processing: 'bg-purple-100 text-purple-800 border-purple-200',
     shipped: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    out_for_delivery: 'bg-orange-100 text-orange-800 border-orange-200',
     delivered: 'bg-green-100 text-green-800 border-green-200',
     cancelled: 'bg-red-100 text-red-800 border-red-200',
-    declined: 'bg-red-100 text-red-800 border-red-200'
+    declined: 'bg-red-100 text-red-800 border-red-200',
+    returned: 'bg-gray-100 text-gray-800 border-gray-200',
+    refunded: 'bg-gray-100 text-gray-800 border-gray-200'
   };
   return colors[status] || 'bg-gray-100 text-gray-800 border-gray-200';
 };
@@ -44,11 +53,17 @@ const getStatusIcon = (status) => {
     case 'confirmed':
       return <CheckCircleIcon className="h-4 w-4" />;
     case 'processing':
-      return <ShoppingBagIcon className="h-4 w-4" />;
+      return <ArrowPathIcon className="h-4 w-4" />;
     case 'shipped':
       return <TruckIcon className="h-4 w-4" />;
+    case 'out_for_delivery':
+      return <MapPinIcon className="h-4 w-4" />;
     case 'delivered':
       return <CheckCircleIcon className="h-4 w-4" />;
+    case 'returned':
+      return <ArrowPathIcon className="h-4 w-4" />;
+    case 'refunded':
+      return <CreditCardIcon className="h-4 w-4" />;
     case 'cancelled':
     case 'declined':
       return <XCircleIcon className="h-4 w-4" />;
@@ -160,6 +175,7 @@ const shouldShowPaymentStatus = (order) => {
 const OrderCard = ({ order, onOrderUpdate }) => {
   const [expanded, setExpanded] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [requesting, setRequesting] = useState(false);
   const navigate = useNavigate();
 
   const handleCancelOrder = async (orderId) => {
@@ -219,6 +235,50 @@ const OrderCard = ({ order, onOrderUpdate }) => {
       alert(errorMessage);
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handleRequestReturn = async (orderId) => {
+    const reason = prompt('Please provide a reason for return:');
+    if (!reason) return;
+
+    try {
+      setRequesting(true);
+      await api.post(`/orders/${orderId}/return`, { reason });
+      onOrderUpdate();
+      alert('Return request submitted successfully!');
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to submit return request');
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const handleReorder = async (orderId) => {
+    try {
+      const response = await api.post(`/orders/${orderId}/reorder`);
+      if (response.data.success) {
+        navigate('/checkout', { 
+          state: { 
+            reorderData: response.data.order,
+            message: 'Items from your previous order have been added to cart' 
+          }
+        });
+      } else {
+        const message = `${response.data.message}\n\nAvailable items: ${response.data.availableItems?.length || 0}\nUnavailable items: ${response.data.unavailableItems?.length || 0}`;
+        if (response.data.canProceed && window.confirm(`${message}\n\nDo you want to proceed with available items only?`)) {
+          navigate('/checkout', { 
+            state: { 
+              reorderData: { items: response.data.availableItems },
+              message: 'Available items have been added to cart'
+            }
+          });
+        } else {
+          alert(message);
+        }
+      }
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to reorder');
     }
   };
 
@@ -291,7 +351,18 @@ const OrderCard = ({ order, onOrderUpdate }) => {
             {expanded ? 'Hide Details' : 'View Details'}
           </button>
           
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {/* Track Order - Always available */}
+            <Link
+              to={`/orders/${order._id}/tracking`}
+              className="inline-flex items-center px-3 py-1 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <EyeIcon className="h-4 w-4 mr-1" />
+              Track Order
+            </Link>
+
+            {/* External tracking for shipped orders */}
             {order.status === 'shipped' && order.trackingNumber && (
               <button 
                 onClick={(e) => {
@@ -301,16 +372,20 @@ const OrderCard = ({ order, onOrderUpdate }) => {
                 className="inline-flex items-center px-3 py-1 bg-blue-50 text-blue-600 rounded-md text-sm font-medium hover:bg-blue-100 transition-colors"
               >
                 <TruckIcon className="h-4 w-4 mr-1" />
-                Track Order
+                External Track
               </button>
             )}
-            {order.status === 'shipped' && getEstimatedDeliveryDate(order) && (
+
+            {/* Delivery estimate */}
+            {['shipped', 'out_for_delivery'].includes(order.status) && getEstimatedDeliveryDate(order) && (
               <span className="inline-flex items-center px-3 py-1 bg-green-50 text-green-600 rounded-md text-sm font-medium">
                 <CalendarIcon className="h-4 w-4 mr-1" />
                 {formatDeliveryDate(getEstimatedDeliveryDate(order), '')}
               </span>
             )}
-            {order.status === 'pending' && (
+
+            {/* Cancel order */}
+            {(order.canCancel !== false) && ['pending', 'confirmed'].includes(order.status) && (
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
@@ -318,12 +393,38 @@ const OrderCard = ({ order, onOrderUpdate }) => {
                 }}
                 disabled={cancelling}
                 className="inline-flex items-center px-3 py-1 bg-red-50 text-red-600 rounded-md text-sm font-medium hover:bg-red-100 disabled:opacity-50 transition-colors"
-                title={`Cancel order ${order._id} (Status: ${order.status})`}
               >
                 <XCircleIcon className="h-4 w-4 mr-1" />
                 {cancelling ? 'Cancelling...' : 'Cancel'}
               </button>
             )}
+
+            {/* Request return */}
+            {order.status === 'delivered' && !order.returnRequest?.requested && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRequestReturn(order._id);
+                }}
+                disabled={requesting}
+                className="inline-flex items-center px-3 py-1 bg-orange-50 text-orange-600 rounded-md text-sm font-medium hover:bg-orange-100 disabled:opacity-50 transition-colors"
+              >
+                <ArrowPathIcon className="h-4 w-4 mr-1" />
+                {requesting ? 'Requesting...' : 'Request Return'}
+              </button>
+            )}
+
+            {/* Reorder */}
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleReorder(order._id);
+              }}
+              className="inline-flex items-center px-3 py-1 bg-green-50 text-green-600 rounded-md text-sm font-medium hover:bg-green-100 transition-colors"
+            >
+              <ShoppingBagIcon className="h-4 w-4 mr-1" />
+              Order Again
+            </button>
           </div>
         </div>
 

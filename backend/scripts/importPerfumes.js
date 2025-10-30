@@ -166,7 +166,7 @@ const importPerfumes = async () => {
     await connectDB();
     
     // Read the JSON file
-    const filePath = path.join(__dirname, '..', 'combined_perfumes.json');
+    const filePath = path.join(__dirname, '..', 'data', 'combined_perfumes.json');
     const data = await fs.readFile(filePath, 'utf8');
     const perfumesData = JSON.parse(data);
     

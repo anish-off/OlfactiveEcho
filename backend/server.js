@@ -13,6 +13,7 @@ const chatRoutes = require('./routes/chatRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
 const adminRoutes = require('./routes/admin');
+const reviewRoutes = require('./routes/reviewRoutes');
 
 const app = express();
 
@@ -82,6 +83,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

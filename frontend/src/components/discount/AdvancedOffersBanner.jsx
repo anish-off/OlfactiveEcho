@@ -12,7 +12,7 @@ const AdvancedOffersBanner = ({ isCompact = false, showAll = true }) => {
       title: 'Buy 2 Get 1 FREE',
       subtitle: 'Mix & Match Any Fragrances',
       description: 'Add 3 items to cart, pay for 2 only!',
-      bgGradient: 'bg-gradient-to-r from-[#c69a2d] via-[#b8860b] to-[#a06800]',
+      bgGradient: 'bg-gradient-to-br from-[#BF7C2A]/90 via-[#8C501B]/90 to-[#a06800]/90',
       code: 'BUY2GET1',
       minItems: 3,
       highlight: 'MOST POPULAR',
@@ -24,7 +24,7 @@ const AdvancedOffersBanner = ({ isCompact = false, showAll = true }) => {
       title: 'FREE Sample Set',
       subtitle: 'On Orders Above ₹2,500',
       description: 'Get 3 premium samples worth ₹150 absolutely FREE!',
-      bgGradient: 'bg-gradient-to-r from-[#a06800] via-[#c69a2d] to-[#b8860b]',
+      bgGradient: 'bg-gradient-to-br from-[#8C501B]/90 via-[#a06800]/90 to-[#704a00]/90',
       code: 'FREESAMPLES',
       minAmount: 2500,
       highlight: 'NEW OFFER',
@@ -36,7 +36,7 @@ const AdvancedOffersBanner = ({ isCompact = false, showAll = true }) => {
       title: 'Bulk Discounts',
       subtitle: 'More You Buy, More You Save',
       description: '5+ items: 10% OFF | 8+ items: 15% OFF | 12+ items: 20% OFF',
-      bgGradient: 'bg-gradient-to-r from-[#b8860b] via-[#a06800] to-[#c69a2d]',
+      bgGradient: 'bg-gradient-to-br from-[#a06800]/90 via-[#8C501B]/90 to-[#BF7C2A]/90',
       code: 'BULKSAVE',
       highlight: 'BEST VALUE',
       savings: 'Up to 20% OFF'
@@ -47,7 +47,7 @@ const AdvancedOffersBanner = ({ isCompact = false, showAll = true }) => {
       title: 'VIP Tier Rewards',
       subtitle: 'Exclusive Member Benefits',
       description: 'Spend ₹5K: Gold Status | ₹10K: Platinum | ₹25K: Diamond',
-      bgGradient: 'bg-gradient-to-r from-[#c69a2d] via-[#b8860b] to-[#a06800]',
+      bgGradient: 'bg-gradient-to-br from-[#BF7C2A]/90 via-[#a06800]/90 to-[#8C501B]/90',
       code: 'VIPACCESS',
       highlight: 'EXCLUSIVE',
       savings: 'Luxury Perks'
@@ -67,7 +67,7 @@ const AdvancedOffersBanner = ({ isCompact = false, showAll = true }) => {
   if (isCompact) {
     return (
       <motion.div 
-        className="bg-gradient-to-r from-[#c69a2d] to-[#b8860b] text-white py-2 px-4 overflow-hidden relative"
+        className="bg-gradient-to-r from-[#BF7C2A] to-[#8C501B] text-white py-2 px-4 overflow-hidden relative"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
@@ -104,11 +104,11 @@ const AdvancedOffersBanner = ({ isCompact = false, showAll = true }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-[#c69a2d] via-[#b8860b] to-[#a06800] bg-clip-text text-transparent mb-2">
-              🎉 MEGA OFFERS ALERT! 🎉
+            <h2 className="text-3xl md:text-4xl font-bold text-[#8C501B] mb-2">
+              Special Offers
             </h2>
             <p className="text-gray-600 text-lg">
-              Don't Miss Out - Limited Time Exclusive Deals
+              Exclusive deals on premium fragrances
             </p>
           </motion.div>
 
@@ -116,44 +116,43 @@ const AdvancedOffersBanner = ({ isCompact = false, showAll = true }) => {
             {advancedOffers.map((offer, index) => (
               <motion.div
                 key={offer.id}
-                className={`relative overflow-hidden rounded-2xl ${offer.bgGradient} text-white shadow-xl hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300`}
+                className={`relative overflow-hidden rounded-xl ${offer.bgGradient} text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300`}
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                whileHover={{ scale: 1.05 }}
+                whileHover={{ scale: 1.02 }}
               >
                 {/* Highlight Badge */}
-                <div className="absolute top-3 left-3 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold">
+                <div className="absolute top-3 left-3 bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold">
                   {offer.highlight}
                 </div>
 
-                {/* Animated Background Elements */}
-                <div className="absolute inset-0 opacity-10">
-                  <div className="absolute top-4 right-4 w-20 h-20 rounded-full bg-white/20 animate-pulse"></div>
-                  <div className="absolute bottom-4 left-4 w-12 h-12 rounded-full bg-white/15 animate-bounce"></div>
+                {/* Subtle Background Element */}
+                <div className="absolute inset-0 opacity-5">
+                  <div className="absolute top-4 right-4 w-20 h-20 rounded-full bg-white/30"></div>
                 </div>
 
                 <div className="relative z-10 p-6">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-white/20 rounded-full">
+                    <div className="p-3 bg-white/15 rounded-lg">
                       {React.createElement(offer.icon, { className: "w-6 h-6" })}
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold">{offer.title}</h3>
-                      <p className="text-white/80 text-sm">{offer.subtitle}</p>
+                      <h3 className="text-lg font-semibold">{offer.title}</h3>
+                      <p className="text-white/70 text-sm">{offer.subtitle}</p>
                     </div>
                   </div>
 
-                  <p className="text-white/90 text-sm mb-4 leading-relaxed">
+                  <p className="text-white/80 text-sm mb-4 leading-relaxed">
                     {offer.description}
                   </p>
 
                   <div className="flex items-center justify-between">
-                    <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold">
+                    <div className="bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs font-semibold">
                       {offer.savings}
                     </div>
                     {offer.code && (
-                      <div className="bg-white text-gray-800 px-3 py-1 rounded-full text-xs font-bold">
+                      <div className="bg-white text-gray-900 px-3 py-1.5 rounded-lg text-xs font-semibold">
                         {offer.code}
                       </div>
                     )}
@@ -170,9 +169,9 @@ const AdvancedOffersBanner = ({ isCompact = false, showAll = true }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.5 }}
           >
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#c69a2d] to-[#b8860b] text-white px-6 py-3 rounded-full font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+            <div className="inline-flex items-center gap-2 bg-[#BF7C2A] hover:bg-[#8C501B] text-white px-6 py-3 rounded-lg font-medium text-base shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer">
               <Zap className="w-5 h-5" />
-              Shop Now & Save Big!
+              Explore Offers
             </div>
           </motion.div>
         </div>
@@ -182,7 +181,7 @@ const AdvancedOffersBanner = ({ isCompact = false, showAll = true }) => {
 
   // Single rotating offer view
   return (
-    <div className="bg-gradient-to-r from-[#c69a2d] to-[#b8860b] text-white py-8 px-4 relative overflow-hidden">
+    <div className="bg-gradient-to-r from-[#BF7C2A] to-[#8C501B] text-white py-8 px-4 relative overflow-hidden">
       <div className="absolute inset-0 bg-black/10"></div>
       <div className="max-w-4xl mx-auto relative z-10">
         <AnimatePresence mode="wait">

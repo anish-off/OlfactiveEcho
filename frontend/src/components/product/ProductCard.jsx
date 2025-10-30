@@ -8,6 +8,7 @@ import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { getImageWithFallbacks, getProxiedImageUrl } from '@/utils/imageUtils';
 import { ProductDiscountBadge } from '@/components/discount/DiscountBadge';
+import CompareButton from './CompareButton';
 
 const ProductCard = ({ 
   _id, 
@@ -111,22 +112,43 @@ const ProductCard = ({
           )}
         </div>
 
-        {/* Wishlist Button */}
-        <Button
-          size="icon"
-          type="button"
-          variant={wished?"default":"ghost"}
-          disabled={!hydrated}
-          onClick={(e)=>{ 
-            e.preventDefault(); 
-            e.stopPropagation(); 
-            toggle(pid); 
-            toast.success(wished? 'Removed from wishlist':'Added to wishlist'); 
-          }}
-          className={`absolute top-2 right-2 z-10 rounded-full backdrop-blur-sm transition-colors duration-300 ${wished? 'bg-[#c69a2d] text-white hover:bg-[#b8860b]':'bg-white/30 text-white hover:bg-white/40'}`}
-        >
-          {wished ? <HeartOff className="h-5 w-5" /> : <Heart className="h-5 w-5" />}
-        </Button>
+        {/* Wishlist and Compare Buttons */}
+        <div className="absolute top-2 right-2 z-10 flex gap-2">
+          <CompareButton 
+            product={{ 
+              _id: pid, 
+              name, 
+              brand, 
+              price, 
+              salePrice, 
+              originalPrice,
+              imageUrl: displayImage, 
+              rating, 
+              reviewCount,
+              notes,
+              scentFamily,
+              concentration,
+              intensity,
+              category: scentFamily
+            }} 
+            size="md" 
+          />
+          <Button
+            size="icon"
+            type="button"
+            variant={wished?"default":"ghost"}
+            disabled={!hydrated}
+            onClick={(e)=>{ 
+              e.preventDefault(); 
+              e.stopPropagation(); 
+              toggle(pid); 
+              toast.success(wished? 'Removed from wishlist':'Added to wishlist'); 
+            }}
+            className={`rounded-full backdrop-blur-sm transition-colors duration-300 ${wished? 'bg-[#c69a2d] text-white hover:bg-[#b8860b]':'bg-white/30 text-white hover:bg-white/40'}`}
+          >
+            {wished ? <HeartOff className="h-5 w-5" /> : <Heart className="h-5 w-5" />}
+          </Button>
+        </div>
       </div>
 
       <CardHeader className="p-4 flex-grow">
