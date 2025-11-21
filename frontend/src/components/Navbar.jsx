@@ -15,7 +15,8 @@ import {
   Store,
   Users,
   Info,
-  Brain
+  Brain,
+  MessageCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -296,7 +297,17 @@ const Navbar = () => {
 
               {/* Profile/Auth */}
               {isLoggedIn ? (
-                <div className="relative dropdown-container">
+                <>
+                  {/* Chatbot Icon */}
+                  <Link
+                    to="/chatbot"
+                    className="p-2 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all duration-200"
+                    title="AI Chatbot"
+                  >
+                    <MessageCircle className="h-5 w-5" />
+                  </Link>
+
+                  <div className="relative dropdown-container">
                   <button
                     onClick={() => toggleDropdown('profile')}
                     className="flex items-center space-x-2 p-2 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all duration-200"
@@ -385,6 +396,7 @@ const Navbar = () => {
                     </div>
                   )}
                 </div>
+                </>
               ) : (
                 <LoginRedirectWrapper>
                   <Link

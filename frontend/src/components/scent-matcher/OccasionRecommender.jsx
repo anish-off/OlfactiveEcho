@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, MapPin, Clock, Users, Thermometer, Sparkles } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, Thermometer, Sparkles, Loader } from 'lucide-react';
 import { getOccasionRecommendations } from '../../api/recommendations';
 
 const OccasionRecommender = ({ onRecommendation }) => {
@@ -7,6 +7,7 @@ const OccasionRecommender = ({ onRecommendation }) => {
   const [selectedTime, setSelectedTime] = useState(null);
   const [selectedSeason, setSelectedSeason] = useState(null);
   const [selectedCompany, setSelectedCompany] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const occasions = [
     {
@@ -230,6 +231,8 @@ const OccasionRecommender = ({ onRecommendation }) => {
   const generateRecommendation = async () => {
     if (!selectedOccasion) return;
 
+    setIsLoading(true);
+
     try {
       // Prepare data for API call
       const occasionData = {
@@ -287,6 +290,8 @@ const OccasionRecommender = ({ onRecommendation }) => {
       };
 
       onRecommendation(result);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -457,10 +462,17 @@ const OccasionRecommender = ({ onRecommendation }) => {
       <div className="text-center">
         <button
           onClick={generateRecommendation}
-          disabled={!canGenerateRecommendation}
-          className="px-8 py-3 bg-amber-500 text-white rounded-lg font-semibold hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
+          disabled={!canGenerateRecommendation || isLoading}
+          className="px-8 py-3 bg-amber-500 text-white rounded-lg font-semibold hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md flex items-center justify-center mx-auto gap-2"
         >
-          Get Occasion-Perfect Recommendations
+          {isLoading ? (
+            <>
+              <Loader className="w-5 h-5 animate-spin" />
+              Getting Recommendations...
+            </>
+          ) : (
+            'Get Occasion-Perfect Recommendations'
+          )}
         </button>
       </div>
     </div>

@@ -68,7 +68,8 @@ const PerfumeFinder = () => {
         timestamp: new Date(),
         mode: mode,
         responseTime: data.response_time || responseTimeMs / 1000,
-        retrievedCount: data.retrieved_count
+        retrievedCount: data.retrieved_count,
+        responseType: data.type // 'advice' or 'product_search'
       };
       setMessages(prev => [...prev, botMessage]);
       
@@ -99,8 +100,19 @@ const PerfumeFinder = () => {
   };
 
   // Enhanced parsing function that handles all possible response formats
-  const parseContent = (text, messageMode) => {
+  const parseContent = (text, messageMode, responseType) => {
     if (!text) return { type: 'text', content: text };
+    
+    // If this is an advice response, don't try to parse as perfumes
+    if (responseType === 'advice') {
+      // Check for tips or advice format
+      const tips = parseTips(text);
+      if (tips.length > 0) {
+        return { type: 'tips', content: tips };
+      }
+      // Otherwise return as formatted text
+      return { type: 'text', content: text };
+    }
     
     // Check for structured perfume data first
     const perfumes = parsePerfumes(text, messageMode);
@@ -400,7 +412,7 @@ const PerfumeFinder = () => {
       );
     }
 
-    const parsedContent = parseContent(message.text, message.mode);
+    const parsedContent = parseContent(message.text, message.mode, message.responseType);
     const showResponseTime = message.responseTime && (
       <div className="flex items-center space-x-1 text-xs text-gray-500">
         <Clock className="w-3 h-3" />

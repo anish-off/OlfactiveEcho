@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Cloud, Sun, Snowflake, Flower, Thermometer, Droplets, Wind } from 'lucide-react';
+import { Cloud, Sun, Snowflake, Flower, Thermometer, Droplets, Wind, Loader } from 'lucide-react';
+import { getSeasonalRecommendations } from '../../api/recommendations';
 
 const SeasonalRecommender = ({ onRecommendation }) => {
   const [currentSeason, setCurrentSeason] = useState(null);
@@ -7,6 +8,7 @@ const SeasonalRecommender = ({ onRecommendation }) => {
   const [temperature, setTemperature] = useState(null);
   const [humidity, setHumidity] = useState(null);
   const [location, setLocation] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Auto-detect current season based on date
   useEffect(() => {
@@ -229,68 +231,123 @@ const SeasonalRecommender = ({ onRecommendation }) => {
     }
   ];
 
-  const generateSeasonalRecommendation = () => {
+  const generateSeasonalRecommendation = async () => {
     if (!currentSeason) return;
 
-    let adjustedProfile = { ...currentSeason.scentProfile };
-    let additionalConsiderations = [];
+    setIsLoading(true);
 
-    // Adjust based on weather
-    if (weatherCondition) {
-      const weatherAdj = weatherCondition.scentAdjustment;
-      adjustedProfile.weatherConsiderations = weatherAdj;
-      additionalConsiderations.push(`Weather: ${weatherCondition.name}`);
-      
-      // Modify intensity based on weather
-      if (weatherCondition.id === 'rainy' || weatherCondition.id === 'humid') {
-        adjustedProfile.intensity = 'light-moderate';
-      } else if (weatherCondition.id === 'windy') {
-        adjustedProfile.intensity = 'strong';
+    try {
+      let adjustedProfile = { ...currentSeason.scentProfile };
+      let additionalConsiderations = [];
+
+      // Adjust based on weather
+      if (weatherCondition) {
+        const weatherAdj = weatherCondition.scentAdjustment;
+        adjustedProfile.weatherConsiderations = weatherAdj;
+        additionalConsiderations.push(`Weather: ${weatherCondition.name}`);
+        
+        // Modify intensity based on weather
+        if (weatherCondition.id === 'rainy' || weatherCondition.id === 'humid') {
+          adjustedProfile.intensity = 'light-moderate';
+        } else if (weatherCondition.id === 'windy') {
+          adjustedProfile.intensity = 'strong';
+        }
       }
-    }
 
-    // Adjust based on temperature
-    if (temperature) {
-      const tempAdj = temperature.scentAdjustment;
-      adjustedProfile.temperatureConsiderations = tempAdj;
-      additionalConsiderations.push(`Temperature: ${temperature.range}`);
-      
-      // Override families based on temperature
-      if (temperature.id === 'hot') {
-        adjustedProfile.families = ['citrus', 'aquatic', 'fresh'];
-        adjustedProfile.intensity = 'light';
-      } else if (temperature.id === 'cold') {
-        adjustedProfile.families = ['oriental', 'gourmand', 'rich woody'];
-        adjustedProfile.intensity = 'strong';
+      // Adjust based on temperature
+      if (temperature) {
+        const tempAdj = temperature.scentAdjustment;
+        adjustedProfile.temperatureConsiderations = tempAdj;
+        additionalConsiderations.push(`Temperature: ${temperature.range}`);
+        
+        // Override families based on temperature
+        if (temperature.id === 'hot') {
+          adjustedProfile.families = ['citrus', 'aquatic', 'fresh'];
+          adjustedProfile.intensity = 'light';
+        } else if (temperature.id === 'cold') {
+          adjustedProfile.families = ['oriental', 'gourmand', 'rich woody'];
+          adjustedProfile.intensity = 'strong';
+        }
       }
-    }
 
-    // Adjust based on humidity
-    if (humidity) {
-      const humidityAdj = humidity.scentAdjustment;
-      adjustedProfile.humidityConsiderations = humidityAdj;
-      additionalConsiderations.push(`Humidity: ${humidity.range}`);
-      
-      if (humidity.id === 'high') {
-        adjustedProfile.families = adjustedProfile.families.filter(f => 
-          !['heavy oriental', 'strong gourmand'].includes(f)
-        );
+      // Adjust based on humidity
+      if (humidity) {
+        const humidityAdj = humidity.scentAdjustment;
+        adjustedProfile.humidityConsiderations = humidityAdj;
+        additionalConsiderations.push(`Humidity: ${humidity.range}`);
+        
+        if (humidity.id === 'high') {
+          adjustedProfile.families = adjustedProfile.families.filter(f => 
+            !['heavy oriental', 'strong gourmand'].includes(f)
+          );
+        }
       }
+
+      // Call the AI-powered seasonal recommendations API
+      const apiResponse = await getSeasonalRecommendations({
+        season: currentSeason.name,
+        seasonId: currentSeason.id,
+        weather: weatherCondition?.name,
+        temperature: temperature?.id,
+        humidity: humidity?.id,
+        scentProfile: adjustedProfile,
+        additionalConsiderations
+      });
+
+      if (apiResponse.success) {
+        const result = {
+          season: currentSeason,
+          weather: weatherCondition,
+          temperature: temperature,
+          humidity: humidity,
+          adjustedProfile,
+          recommendations: apiResponse.data.recommendations || [],
+          additionalConsiderations,
+          confidence: apiResponse.data.confidence || calculateSeasonalConfidence(),
+          metadata: apiResponse.data.metadata,
+          source: 'api'
+        };
+
+        onRecommendation(result);
+      } else {
+        // Fallback to local recommendations
+        const recommendations = generateSeasonalPerfumes(adjustedProfile);
+        
+        onRecommendation({
+          season: currentSeason,
+          weather: weatherCondition,
+          temperature: temperature,
+          humidity: humidity,
+          adjustedProfile,
+          recommendations,
+          additionalConsiderations,
+          confidence: calculateSeasonalConfidence(),
+          source: 'fallback',
+          error: apiResponse.error
+        });
+      }
+    } catch (error) {
+      console.error('Seasonal recommendation error:', error);
+      
+      // Generate local fallback
+      const adjustedProfile = { ...currentSeason.scentProfile };
+      const recommendations = generateSeasonalPerfumes(adjustedProfile);
+      
+      onRecommendation({
+        season: currentSeason,
+        weather: weatherCondition,
+        temperature: temperature,
+        humidity: humidity,
+        adjustedProfile,
+        recommendations,
+        additionalConsiderations: [],
+        confidence: calculateSeasonalConfidence(),
+        source: 'error-fallback',
+        error: error.message
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    // Generate specific recommendations
-    const recommendations = generateSeasonalPerfumes(adjustedProfile);
-
-    onRecommendation({
-      season: currentSeason,
-      weather: weatherCondition,
-      temperature: temperature,
-      humidity: humidity,
-      adjustedProfile,
-      recommendations,
-      additionalConsiderations,
-      confidence: calculateSeasonalConfidence()
-    });
   };
 
   const generateSeasonalPerfumes = (profile) => {
@@ -481,10 +538,17 @@ const SeasonalRecommender = ({ onRecommendation }) => {
       <div className="text-center">
         <button
           onClick={generateSeasonalRecommendation}
-          disabled={!currentSeason}
-          className="px-8 py-3 bg-amber-500 text-white rounded-lg font-semibold hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          disabled={!currentSeason || isLoading}
+          className="px-8 py-3 bg-amber-500 text-white rounded-lg font-semibold hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center mx-auto gap-2"
         >
-          Get Season-Perfect Recommendations
+          {isLoading ? (
+            <>
+              <Loader className="w-5 h-5 animate-spin" />
+              Getting Recommendations...
+            </>
+          ) : (
+            'Get Season-Perfect Recommendations'
+          )}
         </button>
       </div>
     </div>

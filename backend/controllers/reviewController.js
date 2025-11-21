@@ -122,7 +122,7 @@ exports.getReviewsByPerfume = async (req, res) => {
     const ratingStats = await Review.aggregate([
       { 
         $match: { 
-          perfume: require('mongoose').Types.ObjectId(perfumeId),
+          perfume: new require('mongoose').Types.ObjectId(perfumeId),
           status: 'approved'
         } 
       },
