@@ -314,17 +314,36 @@ exports.createOrder = async (req, res) => {
     
     await order.populate('items.perfume sample.samplePerfume');
     
-    // Send order confirmation notifications (Email + SMS)
+    // Send order confirmation notifications (Email + SMS + WhatsApp)
     try {
       console.log('📧 Sending order confirmation notifications...');
       const user = await User.findById(req.user._id);
       console.log('👤 User found:', user.email);
       
+      // Auto-enable SMS/WhatsApp if phone number is provided
+      let phoneNumber = user.phone || shippingAddress.phone;
+      if (phoneNumber && !user.phone) {
+        // Update user phone if not already set
+        user.phone = phoneNumber;
+        await user.save();
+        console.log('📱 User phone number added:', phoneNumber);
+      }
+      
+      // Auto-enable SMS/WhatsApp notifications if phone is available and not already enabled
+      if (phoneNumber && (!user.preferences.smsNotifications || !user.preferences.whatsappNotifications)) {
+        user.preferences = user.preferences || {};
+        user.preferences.smsNotifications = true;
+        user.preferences.whatsappNotifications = true;
+        await user.save();
+        console.log('🔔 SMS and WhatsApp notifications auto-enabled for user');
+      }
+      
       // Use unified notification service
       const notificationResult = await notificationService.sendOrderConfirmation(order, user);
       console.log('✅ Order confirmation notifications sent:', {
         email: !!notificationResult.email,
-        sms: !!notificationResult.sms
+        sms: !!notificationResult.sms,
+        whatsapp: !!notificationResult.whatsapp
       });
     } catch (notificationError) {
       console.error('❌ Failed to send order confirmation notifications:', notificationError.message);
