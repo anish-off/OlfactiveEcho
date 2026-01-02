@@ -41,6 +41,7 @@ import ComparisonBar from './components/product/ComparisonBar';
 // Import Advanced Offer Components
 import AdvancedOffersBanner from './components/discount/AdvancedOffersBanner';
 import OfferNotificationPanel from './components/discount/OfferNotificationPanel';
+import FloatingChatbot from './components/FloatingChatbot';
  
 const AppContent = () => {
   const { isLoggedIn, user } = useAuth();
@@ -107,6 +108,9 @@ const AppContent = () => {
       
       {/* Comparison Bar - Show on all user pages */}
       {isLoggedIn && user?.role !== 'admin' && <ComparisonBar />}
+      
+      {/* Floating Chatbot - Show on all user pages */}
+      {isLoggedIn && user?.role !== 'admin' && <FloatingChatbot />}
     </>
   );
 };
