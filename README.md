@@ -124,6 +124,8 @@ Fork → Feature Branch → Pull Request
 ## 👤 Author
 
 **Anish** - [@anish-off](https://github.com/anish-off)
+**Shanmuga Patel Kani** - [@SHANMU3007](https://github.com/SHANMU3007)
+**Subicharan Ravishankar** - [@Subicharan1018](https://github.com/Subicharan1018)
 
 ---
 
