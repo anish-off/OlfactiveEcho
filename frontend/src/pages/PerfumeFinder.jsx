@@ -41,7 +41,8 @@ const PerfumeFinder = () => {
     setMessages(prev => [...prev, userMessage]);
     
     try {
-      const response = await fetch('http://127.0.0.1:5001/query', {
+      const CHATBOT_URL = import.meta.env.VITE_CHATBOT_URL || 'http://127.0.0.1:5001';
+      const response = await fetch(`${CHATBOT_URL}/query`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

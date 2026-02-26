@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
+import { API_BASE_URL } from '../../api/http';
 
 const GoogleSignInButton = ({ onSuccess, onError }) => {
     const buttonRef = useRef(null);
@@ -49,8 +50,7 @@ const GoogleSignInButton = ({ onSuccess, onError }) => {
             const { credential } = response;
 
             // Send the credential to your backend
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-            const res = await axios.post(`${apiUrl}/api/auth/google`, {
+            const res = await axios.post(`${API_BASE_URL}/auth/google`, {
                 credential,
             });
 
