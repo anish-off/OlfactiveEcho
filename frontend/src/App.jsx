@@ -3,6 +3,7 @@ import { CartProvider } from "./context/CartContext";
 import { WishlistProvider } from "./context/WishlistContext";
 import { ComparisonProvider } from "./context/ComparisonContext";
 import AppContent from "./AppContent";
+import { Analytics } from "@vercel/analytics/react";
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
         <CartProvider>
           <ComparisonProvider>
             <AppContent />
+            <Analytics />
           </ComparisonProvider>
         </CartProvider>
       </WishlistProvider>
