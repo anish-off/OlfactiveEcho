@@ -13,7 +13,8 @@ export const getProxiedImageUrl = (imageUrl) => {
 
   // For external URLs (like Fragrantica), use backend proxy
   if (imageUrl.startsWith('http')) {
-    return `http://localhost:5000/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    return `${API_URL}/proxy-image?url=${encodeURIComponent(imageUrl)}`;
   }
 
   return imageUrl;
